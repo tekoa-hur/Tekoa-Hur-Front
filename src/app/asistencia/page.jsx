@@ -55,6 +55,9 @@ function AsistenciaContenido() {
   const isDocente   = usuario?.rol === "docente";
   const isAdmin     = usuario?.rol === "administrador";
   const headers     = useMemo(() => ({ Accept: "application/json", ...getAuthHeaders() }), []);
+  
+  // Dias no laborables
+  const [feriados, setFeriados] = useState([]);
 
   // Catálogo
   const [materias,    setMaterias]    = useState([]);  // solo admin
@@ -130,14 +133,20 @@ function AsistenciaContenido() {
     setLoading(true); setError("");
     (async () => {
       try {
-        const [resAsis, resCom] = await Promise.all([
+        const [resAsis, resCom, resFeriados] = await Promise.all([
           fetch(`${BACK_URL}/api/asistencias?comisionId=${comisionId}`, { headers }),
           fetch(`${BACK_URL}/api/comisiones/${comisionId}`,             { headers }),
+          // Para dias no laborable
+          fetch(`${BACK_URL}/api/feriados`,                             { headers }),
         ]);
         if (!resAsis.ok) throw new Error("Error cargando asistencias");
 
         const registros = await resAsis.json();
         const comData   = resCom.ok ? await resCom.json() : comisionInfo;
+
+        // Dia no laborable
+        const feriadosData = resFeriados.ok ? await resFeriados.json() : [];
+
 
         const estudiantesMatric  = comData?.estudiantes ?? [];
         const alumnosFormateados = estudiantesMatric.map(e => ({
@@ -155,6 +164,13 @@ function AsistenciaContenido() {
         setFechas(fechasOrd);
         setAlumnos(alumnosFormateados);
         setAsistencias(asisFormateadas);
+        // Dias no laborables
+        setFeriados( Array.isArray(feriadosData) ? feriadosData.map(f => ({
+            fecha: f.fecha,
+            tipo: f.tipoEvento?.nombre,
+            descripcion: f.descripcion,
+        }))
+        : [] );
       } catch (e) {
         setError(e.message ?? "Error.");
       } finally {
@@ -337,6 +353,7 @@ function AsistenciaContenido() {
             fechas={fechas}
             alumnos={alumnos}
             asistencias={asistencias}
+            feriados={feriados}
             mostrarDni={true}
             mostrarVolver={false}
           />

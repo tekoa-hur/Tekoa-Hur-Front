@@ -12,6 +12,7 @@ export default function AsistenciaGrid({
   fechas        = [],
   alumnos       = [],
   asistencias   = [],
+  feriados      = [],
   titulo        = "Grilla de asistencias",
   headerNombre  = "Nombre y apellido",
   mostrarDni    = true,
@@ -20,6 +21,14 @@ export default function AsistenciaGrid({
   const asistenciaSet = useMemo(() => {
     return new Set(asistencias.map(a => `${a.alumnoId}-${a.fecha}`));
   }, [asistencias]);
+
+  //Crear mapa de eventos
+  const feriadosMap = useMemo(() => {
+  const map = new Map();
+
+      feriados.forEach(f => { map.set(f.fecha, f); });
+    return map;
+  }, [feriados]);
 
   const fechasOrdenadas = useMemo(() => {
     return [...fechas].sort((a, b) => new Date(a) - new Date(b));
@@ -94,17 +103,52 @@ export default function AsistenciaGrid({
                 {mostrarDni && (
                   <td className="px-4 py-3 font-mono text-xs text-gray-500">{fila.dni}</td>
                 )}
-                {fila.fechas.map(({ fecha, presente }) => (
-                  <td key={fecha} className="px-2 py-3 text-center">
-                    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
-                      presente
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-600"
-                    }`}>
-                      {presente ? "P" : "A"}
-                    </span>
-                  </td>
-                ))}
+{/* Mapeo las fechas para mostrar P/A o Feriados, con estilos según el caso */}
+      {fila.fechas.map(({ fecha, presente }) => {
+
+        const evento = feriadosMap.get(fecha);
+
+        let texto = presente ? "P" : "A";
+
+        let estilos = presente
+          ? "bg-green-100 text-green-700"
+          : "bg-red-100 text-red-600";
+
+        if (evento) {
+          switch (evento.tipo) {
+
+            case "Cancelación de clase":
+              texto = "F";
+              estilos = "bg-yellow-100 text-yellow-700";
+            break;
+
+            case "Día no laborable":
+              texto = "NL";
+              estilos = "bg-blue-100 text-blue-700";
+            break;
+
+            case "Paro docente":
+              texto = "PD";
+              estilos = "bg-orange-100 text-orange-700";
+            break;
+
+            default:
+              texto = "E";
+              estilos = "bg-gray-100 text-gray-700";
+        }
+      }
+
+      return (
+        <td key={fecha} className="px-2 py-3 text-center">
+          <span
+            title={evento?.descripcion ?? ""}
+            className={`inline-flex min-w-[28px] h-7 px-1 items-center justify-center rounded-full text-[10px] font-bold ${estilos}`}
+        >
+          {texto}
+        </span>
+      </td>
+    );
+  })}
               </tr>
             ))}
           </tbody>
@@ -120,6 +164,18 @@ export default function AsistenciaGrid({
         <span className="flex items-center gap-1">
           <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-100 text-xs font-bold text-red-600">A</span>
           Ausente
+        </span>
+        <span className="flex items-center gap-1">
+        <span className="inline-flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-yellow-100 text-xs font-bold text-yellow-700">F</span>
+          Cancelacion de clase
+        </span>
+        <span className="flex items-center gap-1">
+        <span className="inline-flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">NL</span>
+          No laborable
+        </span>
+        <span className="flex items-center gap-1">
+        <span className="inline-flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-700">PD</span>
+          Paro docente
         </span>
       </div>
     </div>
