@@ -156,7 +156,14 @@ function AsistenciaContenido() {
         }));
 
         const soloEstudiantes = registros.filter(r => r.tipoUsuario === "ESTUDIANTE");
-        const fechasOrd = [...new Set(soloEstudiantes.map(r => r.fecha).filter(Boolean))].sort();
+        // Fechas con mapeo de feriados
+        const fechasOrd = [
+          ...new Set([
+            ...soloEstudiantes.map(r => r.fecha),
+            ...feriadosData.map(f => f.fecha),
+          ].filter(Boolean))
+        ].sort();  
+
         const asisFormateadas = soloEstudiantes
           .filter(r => r.estado === "PRESENTE")
           .map(r => ({ alumnoId: String(r.usuarioId), fecha: r.fecha }));
