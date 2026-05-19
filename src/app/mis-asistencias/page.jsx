@@ -22,6 +22,8 @@ function MisAsistenciasContenido() {
   const [comisiones,  setComisiones]  = useState([]); // [{comision, asistencias[]}]
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState("");
+  /*Agregado para marcar feriados en la grilla de asistencias*/
+  const [feriados, setFeriados] = useState([]);
 
   // Redirigir si no es alumno
   useEffect(() => {
@@ -49,24 +51,43 @@ function MisAsistenciasContenido() {
           comisionesRaw.map(async (com) => {
             const comisionId = com.comisionId ?? com.id;
 
-            const [resDetalle, resAsis] = await Promise.all([
+            const [resDetalle, resAsis, resFeriados] = await Promise.all([
               // Detalle de la comisión con materia y profesor
               fetch(`${BACK_URL}/api/comisiones/${comisionId}`, { headers }),
               // Asistencias de esta comisión — filtramos las del alumno en cliente
               fetch(`${BACK_URL}/api/asistencias?comisionId=${comisionId}`, { headers }),
+              // Feriados para marcar en la grilla
+              fetch(`${BACK_URL}/api/feriados`, { headers }),
             ]);
 
             const detalle    = resDetalle.ok ? await resDetalle.json() : com;
             const asistencias = resAsis.ok  ? await resAsis.json()    : [];
+            //Feriados para marcar en la grilla
+            const feriadosData = resFeriados.ok
+              ? await resFeriados.json()
+              : [];
+            // Transformar feriados en eventos
+            const eventos = Array.isArray(feriadosData)
+              ? feriadosData.map(f => ({
+                  fecha: f.fecha,
+                  tipo: f.tipoEvento?.nombre,
+                  descripcion: f.descripcion,
+                }))
+              : [];
 
-            // Filtrar solo las asistencias de este alumno
+            // Filtrar solo las asistencias del alumno
             const misAsistencias = Array.isArray(asistencias)
-              ? asistencias.filter(
-                  a => String(a.usuarioId) === String(usuario.dni) && a.tipoUsuario === "ESTUDIANTE"
+              ? asistencias.filter( a =>
+                  String(a.usuarioId) === String(usuario.dni) &&
+                  a.tipoUsuario === "ESTUDIANTE"
                 )
               : [];
 
-            return { comision: detalle, asistencias: misAsistencias };
+            return {
+              comision: detalle,
+              asistencias: misAsistencias,
+              eventos,
+            };
           })
         );
 
@@ -116,13 +137,15 @@ function MisAsistenciasContenido() {
 
         {!loading && !error && comisiones.length > 0 && (
           <div className="flex flex-col gap-5">
-            {comisiones.map(({ comision, asistencias }) => (
+            {comisiones.map(({ comision, asistencias, eventos }) => (
               <ComisionCard
                 key={comision.comisionId ?? comision.id}
                 comision={comision}
                 asistencias={asistencias}
+                eventos={eventos}
                 dni={usuario.dni}
               />
+
             ))}
           </div>
         )}
@@ -133,16 +156,34 @@ function MisAsistenciasContenido() {
 }
 
 /* ─── Tarjeta de comisión ───────────────────────────────────── */
-function ComisionCard({ comision, asistencias, dni }) {
-  // Fechas únicas ordenadas
-  const fechas = [...new Set(asistencias.map(a => a.fecha).filter(Boolean))].sort();
+function ComisionCard({ comision, asistencias, eventos = [],dni }) {
+  // Fechas únicas ordenadas incluidos feriados para marcar en la grilla
+  const fechas = [
+    ...new Set([
+      ...asistencias.map(a => a.fecha),
+      ...eventos.map(e => e.fecha),
+    ].filter(Boolean))
+  ].sort();
 
   // Presencias del alumno
   const presentes = new Set(
     asistencias.filter(a => a.estado === "PRESENTE").map(a => a.fecha)
   );
 
-  const totalClases   = fechas.length;
+  //Mapeo de eventos para marcar feriados en la grilla
+  const eventosMap = new Map();
+
+  eventos.forEach(e => {
+     eventosMap.set(e.fecha, e);
+  });
+  /*Asi contaria los feriados como clases y contarian en porcentajes
+  const totalClases   = fechas.length;*/
+  // Contar solo las fechas que no son feriados como clases
+  const totalClases = fechas.filter(fecha => {
+    const evento = eventosMap.get(fecha);
+    return !evento;
+  }).length;
+
   const totalPresente = presentes.size;
   const porcentaje    = totalClases > 0 ? Math.round((totalPresente / totalClases) * 100) : null;
 
@@ -186,26 +227,64 @@ function ComisionCard({ comision, asistencias, dni }) {
         <div className="px-5 py-4">
           <div className="flex flex-wrap gap-2">
             {fechas.map(fecha => {
+
               const presente = presentes.has(fecha);
-              return (
-                <div
-                  key={fecha}
-                  title={fecha}
-                  className={`flex flex-col items-center rounded-lg border px-2.5 py-2 text-center min-w-[48px] ${
-                    presente
-                      ? "border-green-200 bg-green-50"
-                      : "border-red-200 bg-red-50"
-                  }`}
-                >
-                  <span className="text-xs text-gray-500 leading-tight">
-                    {formatearFecha(fecha)}
-                  </span>
-                  <span className={`mt-1 text-sm font-bold ${presente ? "text-green-700" : "text-red-600"}`}>
-                    {presente ? "P" : "A"}
-                  </span>
-                </div>
-              );
-            })}
+              const evento = eventosMap.get(fecha);
+  
+              let texto = presente ? "P" : "A";
+              let container = presente
+                ? "border-green-200 bg-green-50"
+                : "border-red-200 bg-red-50";
+
+              let textoColor = presente
+                ? "text-green-700"
+                : "text-red-600";
+
+            if (evento) {
+
+              switch (evento.tipo) {
+
+                case "Cancelación de clase":
+                  texto = "F";
+                  container = "border-yellow-200 bg-yellow-50";
+                  textoColor = "text-yellow-700";
+                break;
+
+                case "Día no laborable":
+                  texto = "NL";
+                  container = "border-blue-200 bg-blue-50";
+                  textoColor = "text-blue-700";
+                break;
+
+                case "Paro docente":
+                  texto = "PD";
+                  container = "border-orange-200 bg-orange-50";
+                  textoColor = "text-orange-700";
+                break;
+
+                default:
+                  texto = "E";
+                  container = "border-gray-200 bg-gray-50";
+                  textoColor = "text-gray-700";
+              }
+            }
+
+            return (
+              <div
+                key={fecha}
+                title={evento?.descripcion ?? fecha}
+                className={`flex flex-col items-center rounded-lg border px-2.5 py-2 text-center min-w-[48px] ${container}`}
+              >
+                <span className="text-xs text-gray-500 leading-tight">
+                  {formatearFecha(fecha)}
+                </span>
+
+                <span className={`mt-1 text-sm font-bold ${textoColor}`}>
+                  {texto}
+                </span>
+              </div>
+            );
+        })}
           </div>
 
           {/* Leyenda */}
@@ -217,6 +296,20 @@ function ComisionCard({ comision, asistencias, dni }) {
             <span className="flex items-center gap-1">
               <span className="inline-block h-3 w-3 rounded bg-red-200"/>
               Ausente (A)
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-3 w-3 rounded bg-yellow-200"/>
+              Cancelación (F)
+            </span>
+
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-3 w-3 rounded bg-blue-200"/>
+                No laborable (NL)
+              </span>
+
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-3 w-3 rounded bg-orange-200"/>
+                Paro docente (PD)
             </span>
           </div>
         </div>
