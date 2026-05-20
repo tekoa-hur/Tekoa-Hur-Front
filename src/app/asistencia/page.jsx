@@ -156,14 +156,30 @@ function AsistenciaContenido() {
         }));
 
         const soloEstudiantes = registros.filter(r => r.tipoUsuario === "ESTUDIANTE");
-        // Fechas con mapeo de feriados
+// Fechas donde realmente hubo presentes
+        const fechasPresentes = soloEstudiantes
+          .filter(r => r.estado === "PRESENTE")
+          .map(r => r.fecha)
+          .filter(Boolean)
+          .sort();
+
+// Primera fecha real de cursada
+        const primeraFechaClase = fechasPresentes[0];
+
+// Mostrar feriados solo desde la primera clase
+        const fechasFeriados = feriadosData
+          .map(f => f.fecha)
+          .filter(f => !primeraFechaClase || f >= primeraFechaClase);
+
+// Fechas finales para la grilla
         const fechasOrd = [
           ...new Set([
-            ...soloEstudiantes.map(r => r.fecha),
-            ...feriadosData.map(f => f.fecha),
+          ...soloEstudiantes.map(r => r.fecha),
+          ...fechasFeriados,
           ].filter(Boolean))
-        ].sort();  
+        ].sort();
 
+//Estados
         const asisFormateadas = soloEstudiantes
           .filter(r => r.estado === "PRESENTE")
           .map(r => ({ alumnoId: String(r.usuarioId), fecha: r.fecha }));
