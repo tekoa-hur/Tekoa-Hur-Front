@@ -158,12 +158,29 @@ function MisAsistenciasContenido() {
 /* ─── Tarjeta de comisión ───────────────────────────────────── */
 function ComisionCard({ comision, asistencias, eventos = [],dni }) {
   // Fechas únicas ordenadas incluidos feriados para marcar en la grilla
-  const fechas = [
-    ...new Set([
-      ...asistencias.map(a => a.fecha),
-      ...eventos.map(e => e.fecha),
-    ].filter(Boolean))
-  ].sort();
+
+    // Fechas donde realmente estuvo presente
+const fechasPresentes = asistencias
+  .filter(a => a.estado === "PRESENTE")
+  .map(a => a.fecha)
+  .filter(Boolean)
+  .sort();
+
+// Primera fecha real de cursada
+const primeraFechaClase = fechasPresentes[0];
+
+// Mostrar eventos solo desde la primera clase
+const eventosFiltrados = eventos.filter(
+  e => !primeraFechaClase || e.fecha >= primeraFechaClase
+);
+
+// Fechas finales de la grilla
+const fechas = [
+  ...new Set([
+    ...asistencias.map(a => a.fecha),
+    ...eventosFiltrados.map(e => e.fecha),
+  ].filter(Boolean))
+].sort();
 
   // Presencias del alumno
   const presentes = new Set(
@@ -173,9 +190,11 @@ function ComisionCard({ comision, asistencias, eventos = [],dni }) {
   //Mapeo de eventos para marcar feriados en la grilla
   const eventosMap = new Map();
 
-  eventos.forEach(e => {
-     eventosMap.set(e.fecha, e);
+  eventosFiltrados.forEach(e => {
+  eventosMap.set(e.fecha, e);
   });
+
+
   /*Asi contaria los feriados como clases y contarian en porcentajes
   const totalClases   = fechas.length;*/
   // Contar solo las fechas que no son feriados como clases
