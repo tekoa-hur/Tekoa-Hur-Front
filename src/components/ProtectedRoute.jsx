@@ -49,6 +49,22 @@ export default function ProtectedRoute(props) {
       return;
     }
 
+    // ── Cambio obligatorio de contraseña ──
+    //
+    // Si el usuario tiene el flag en true (primer ingreso o reset
+    // de admin reciente), lo redirigimos a /cambio-obligatorio
+    // y bloqueamos cualquier otra pantalla protegida hasta que
+    // defina una clave que cumpla la política.
+    //
+    // La excepción es la propia pantalla /cambio-obligatorio: si
+    // ya estamos ahí, no tiene sentido redirigir (loop infinito).
+    // Eso lo controla la propia /cambio-obligatorio: NO usa
+    // ProtectedRoute con este chequeo, sino su propio guard.
+    if (usuario.cambioPasswordObligatorio) {
+      router.replace("/cambio-obligatorio");
+      return;
+    }
+
     console.log("ROL USUARIO:", rolUsuario);
     console.log("ROLES PERMITIDOS:", rolesPermitidos);
 
@@ -72,6 +88,11 @@ export default function ProtectedRoute(props) {
 
   // Sin sesión
   if (!usuario) return null;
+
+  // Flag de cambio obligatorio: no renderizamos children hasta
+  // que el router termine de mover al usuario a /cambio-obligatorio.
+  // Esto evita un "flash" momentáneo del contenido protegido.
+  if (usuario.cambioPasswordObligatorio) return null;
 
   // Rol inválido
   if (

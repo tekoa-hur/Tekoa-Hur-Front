@@ -35,6 +35,22 @@ export default function LoginPage() {
         return;
       }
 
+      // ── FLUJO DE CAMBIO OBLIGATORIO ──
+      //
+      // El backend devuelve `cambioPasswordObligatorio: true` cuando:
+      //  - El usuario fue creado por seed/Excel (clave inicial = DNI).
+      //  - El administrador acaba de resetearle la clave al DNI.
+      //  - Es un usuario nuevo creado manualmente desde admin-usuarios.
+      //
+      // En esos casos, antes de habilitar el menú principal, lo
+      // mandamos a /cambio-obligatorio donde DEBE definir una clave
+      // que cumpla la política de seguridad. Mientras no la cambie,
+      // ProtectedRoute lo rebota a esa pantalla.
+      if (result.usuario?.cambioPasswordObligatorio) {
+        router.push("/cambio-obligatorio");
+        return;
+      }
+
       // Redirigir al inicio (el menú se filtra por rol automáticamente)
       router.push("/");
     } catch {
