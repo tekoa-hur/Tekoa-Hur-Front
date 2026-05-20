@@ -4,6 +4,12 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { BACK_URL, getAuthHeaders } from "@/config/api";
+// Política de contraseñas y componente visual reutilizable.
+// El admin debe poder ver los mismos requisitos que cualquier
+// usuario, así no se "queda corto" eligiendo una clave inicial
+// que el endpoint del backend luego rechazaría.
+import PasswordRequirements from "@/components/PasswordRequirements";
+import { passwordCumplePolitica } from "@/utils/passwordPolicy";
 
 const ROL_LABEL = { alumno: "Alumno", docente: "Docente", administrador: "Administrador" };
 const ROL_COLOR = {
@@ -70,7 +76,9 @@ function AdminContenido() {
   async function handleCrear(e) {
     e.preventDefault(); setFormError(""); setFormSuccess("");
     if (!form.dni || !form.nombre || !form.password) return setFormError("Completá todos los campos obligatorios.");
-    if (form.password.length < 6) return setFormError("La contraseña debe tener al menos 6 caracteres.");
+    // Política unificada: la misma que pide el backend.
+    if (!passwordCumplePolitica(form.password))
+      return setFormError("La contraseña no cumple con los requisitos de seguridad.");
     setFormLoading(true);
     try {
       const res  = await fetch(`${BACK_URL}/api/auth/usuarios`, {
@@ -86,7 +94,10 @@ function AdminContenido() {
 
   async function handleEditar(e) {
     e.preventDefault(); setFormError(""); setFormSuccess("");
-    if (form.password && form.password.length < 6) return setFormError("La contraseña debe tener al menos 6 caracteres.");
+    // Si el admin ingresó una clave nueva (campo opcional en
+    // edición), validamos contra la misma política.
+    if (form.password && !passwordCumplePolitica(form.password))
+      return setFormError("La nueva contraseña no cumple con los requisitos de seguridad.");
     setFormLoading(true);
     try {
       const body = { nombre:form.nombre, rol:form.rol, activo:form.activo };
@@ -225,7 +236,7 @@ function AdminContenido() {
         </div>
 
         <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-700">
-          💡 Contraseña inicial de alumnos y docentes cargados por Excel = su DNI.
+          💡 Los usuarios creados o reseteados a su DNI deberán cambiar su contraseña en el primer ingreso por una que cumpla la política de seguridad.
         </div>
 
       </div>
@@ -289,8 +300,17 @@ function AdminContenido() {
                   </label>
                   <input type="password" value={form.password}
                     onChange={e => setForm(p => ({...p, password:e.target.value}))}
-                    placeholder={modal === "crear" ? "Mínimo 6 caracteres" : "Solo si querés cambiarla"}
+                    placeholder={modal === "crear" ? "Mínimo 8, mayúscula y especial" : "Solo si querés cambiarla"}
                     className={inputCls} />
+                  {/*
+                    * Requisitos visibles:
+                    * - Siempre en alta nueva (el password es obligatorio).
+                    * - En edición sólo si el admin empezó a escribir algo,
+                    *   para no abrumar cuando deja el campo vacío.
+                    */}
+                  {(modal === "crear" || form.password.length > 0) && (
+                    <PasswordRequirements password={form.password} />
+                  )}
                 </div>
                 {modal === "editar" && (
                   <label className="flex items-center gap-2 text-sm text-gray-700">

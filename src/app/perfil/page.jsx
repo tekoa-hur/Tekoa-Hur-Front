@@ -4,9 +4,27 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import PasswordRequirements from "@/components/PasswordRequirements";
+import { passwordCumplePolitica } from "@/utils/passwordPolicy";
 
 const BACK_URL = process.env.NEXT_PUBLIC_BACK_URL;
 
+/**
+ * /perfil
+ * --------------------------------------------------------------
+ * Pantalla de perfil del usuario logueado. Muestra sus datos
+ * básicos y permite cambiar la contraseña voluntariamente.
+ *
+ * Cambios respecto a la versión anterior:
+ *  - Aplica la nueva política (≥8 chars, mayúscula, especial)
+ *    usando el componente <PasswordRequirements/> y la utilidad
+ *    passwordCumplePolitica(), idénticos al resto del sistema.
+ *  - Renderiza la lista de errores `errors[]` que devuelve el
+ *    backend cuando la política se incumple (defensa en profundidad).
+ *  - Después de un cambio exitoso ya NO necesitamos forzar logout:
+ *    podemos quedarnos en el perfil, pero por seguridad seguimos
+ *    cerrando sesión para invalidar el JWT actual.
+ */
 export default function PerfilPage() {
   return (
     <ProtectedRoute>
@@ -24,8 +42,9 @@ function PerfilContenido() {
     passwordNueva:  "",
     passwordRepeat: "",
   });
-  const [estado,  setEstado]  = useState("idle");
+  const [estado,  setEstado]  = useState("idle"); // idle | loading | error | success
   const [mensaje, setMensaje] = useState("");
+  const [errores, setErrores] = useState([]);     // array de la política
 
   const rolLabel = {
     alumno:        "Alumno",
@@ -36,16 +55,21 @@ function PerfilContenido() {
   function handleChange(e) {
     setEstado("idle");
     setMensaje("");
+    setErrores([]);
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
   }
+
+  const cumplePolitica = passwordCumplePolitica(form.passwordNueva);
+  const passwordsCoinciden =
+    form.passwordNueva.length > 0 && form.passwordNueva === form.passwordRepeat;
 
   async function handleSubmit(e) {
     e.preventDefault();
     setMensaje("");
+    setErrores([]);
 
     if (!form.passwordActual) { setMensaje("Ingresá tu contraseña actual."); setEstado("error"); return; }
-    if (!form.passwordNueva)  { setMensaje("Ingresá la nueva contraseña.");  setEstado("error"); return; }
-    if (form.passwordNueva.length < 6) { setMensaje("La nueva contraseña debe tener al menos 6 caracteres."); setEstado("error"); return; }
+    if (!cumplePolitica)      { setMensaje("La nueva contraseña no cumple con los requisitos."); setEstado("error"); return; }
     if (form.passwordNueva !== form.passwordRepeat) { setMensaje("Las contraseñas nuevas no coinciden."); setEstado("error"); return; }
 
     setEstado("loading");
@@ -58,11 +82,20 @@ function PerfilContenido() {
       });
       const data = await res.json();
 
-      if (!res.ok) { setEstado("error"); setMensaje(data.message ?? "Error al actualizar."); return; }
+      if (!res.ok) {
+        setEstado("error");
+        setMensaje(data.message ?? "Error al actualizar.");
+        setErrores(Array.isArray(data.errors) ? data.errors : []);
+        return;
+      }
 
       setEstado("success");
       setMensaje(data.message);
       setForm({ passwordActual: "", passwordNueva: "", passwordRepeat: "" });
+      // Forzamos logout: el JWT actual sigue siendo válido hasta
+      // su expiración natural, pero por higiene de seguridad
+      // mejor cerrar sesión y exigir un nuevo login con la
+      // contraseña recién creada.
       setTimeout(() => { logout(); router.push("/login"); }, 2500);
     } catch {
       setEstado("error");
@@ -106,30 +139,73 @@ function PerfilContenido() {
           )}
 
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-            {[
-              { id: "passwordActual", label: "Contraseña actual",        placeholder: "Tu contraseña actual",      complete: "current-password" },
-              { id: "passwordNueva",  label: "Nueva contraseña",          placeholder: "Mínimo 6 caracteres",        complete: "new-password" },
-              { id: "passwordRepeat", label: "Repetir nueva contraseña",  placeholder: "Repetí la nueva contraseña", complete: "new-password" },
-            ].map(({ id, label, placeholder, complete }) => (
-              <div key={id} className="flex flex-col gap-1.5">
-                <label htmlFor={id} className="text-sm font-medium text-gray-700">{label}</label>
-                <input
-                  id={id} name={id} type="password" autoComplete={complete}
-                  placeholder={placeholder}
-                  value={form[id]} onChange={handleChange}
-                  disabled={estado === "loading" || estado === "success"}
-                  className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-200 disabled:opacity-50"
-                />
-              </div>
-            ))}
+
+            {/* Contraseña actual */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="passwordActual" className="text-sm font-medium text-gray-700">
+                Contraseña actual
+              </label>
+              <input
+                id="passwordActual" name="passwordActual" type="password" autoComplete="current-password"
+                placeholder="Tu contraseña actual"
+                value={form.passwordActual} onChange={handleChange}
+                disabled={estado === "loading" || estado === "success"}
+                className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-200 disabled:opacity-50"
+              />
+            </div>
+
+            {/* Nueva contraseña + requisitos */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="passwordNueva" className="text-sm font-medium text-gray-700">
+                Nueva contraseña
+              </label>
+              <input
+                id="passwordNueva" name="passwordNueva" type="password" autoComplete="new-password"
+                placeholder="Definí tu nueva contraseña"
+                value={form.passwordNueva} onChange={handleChange}
+                disabled={estado === "loading" || estado === "success"}
+                className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-200 disabled:opacity-50"
+              />
+              <PasswordRequirements password={form.passwordNueva} />
+            </div>
+
+            {/* Repetir */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="passwordRepeat" className="text-sm font-medium text-gray-700">
+                Repetir nueva contraseña
+              </label>
+              <input
+                id="passwordRepeat" name="passwordRepeat" type="password" autoComplete="new-password"
+                placeholder="Repetí la nueva contraseña"
+                value={form.passwordRepeat} onChange={handleChange}
+                disabled={estado === "loading" || estado === "success"}
+                className={`rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 disabled:opacity-50 ${
+                  form.passwordRepeat.length === 0
+                    ? "border-gray-300 focus:border-green-600 focus:ring-green-200"
+                    : passwordsCoinciden
+                      ? "border-green-400 focus:border-green-600 focus:ring-green-200"
+                      : "border-red-300 focus:border-red-500 focus:ring-red-200"
+                }`}
+              />
+              {form.passwordRepeat.length > 0 && !passwordsCoinciden && (
+                <p className="text-xs text-red-600">Las contraseñas no coinciden.</p>
+              )}
+            </div>
 
             {estado === "error" && mensaje && (
-              <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{mensaje}</p>
+              <div role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                <p className="font-medium">{mensaje}</p>
+                {errores.length > 0 && (
+                  <ul className="mt-1 list-disc pl-5 text-xs">
+                    {errores.map((e, i) => <li key={i}>{e}</li>)}
+                  </ul>
+                )}
+              </div>
             )}
 
             <button
               type="submit"
-              disabled={estado === "loading" || estado === "success"}
+              disabled={estado === "loading" || estado === "success" || !cumplePolitica || !passwordsCoinciden}
               className="rounded-xl bg-green-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {estado === "loading" ? "Guardando..." : "Cambiar contraseña"}
