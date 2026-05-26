@@ -133,11 +133,12 @@ function AsistenciaContenido() {
     setLoading(true); setError("");
     (async () => {
       try {
-        const [resAsis, resCom, resFeriados] = await Promise.all([
-          fetch(`${BACK_URL}/api/asistencias?comisionId=${comisionId}`, { headers }),
-          fetch(`${BACK_URL}/api/comisiones/${comisionId}`,             { headers }),
+        const [resAsis, resCom, resFeriados, resDiasSinClase] = await Promise.all([
+          fetch(`${BACK_URL}/api/asistencias?comisionId=${comisionId}`,{ headers }),
+          fetch(`${BACK_URL}/api/comisiones/${comisionId}`,{ headers }),
           // Para dias no laborable
-          fetch(`${BACK_URL}/api/feriados`,                             { headers }),
+          fetch(`${BACK_URL}/api/feriados`,{ headers }),
+          fetch(`${BACK_URL}/api/diaSinClase`,{ headers }),
         ]);
         if (!resAsis.ok) throw new Error("Error cargando asistencias");
 
@@ -146,7 +147,13 @@ function AsistenciaContenido() {
 
         // Dia no laborable
         const feriadosData = resFeriados.ok ? await resFeriados.json() : [];
+        const diasSinClaseData = resDiasSinClase.ok? await resDiasSinClase.json(): [];
 
+        //Filtrar SOLO la comisión actual
+        const diasSinClaseComision = diasSinClaseData.filter(
+            d => String(d.comisionId) === String(comisionId)
+        );
+        
 
         const estudiantesMatric  = comData?.estudiantes ?? [];
         const alumnosFormateados = estudiantesMatric.map(e => ({
@@ -171,11 +178,17 @@ function AsistenciaContenido() {
           .map(f => f.fecha)
           .filter(f => !primeraFechaClase || f >= primeraFechaClase);
 
+// filtra los dias que no hubo clases
+          const fechasDiasSinClase = diasSinClaseComision
+          .map(f => f.fecha)
+          .filter(f => !primeraFechaClase || f >= primeraFechaClase);
+
 // Fechas finales para la grilla
         const fechasOrd = [
           ...new Set([
           ...soloEstudiantes.map(r => r.fecha),
           ...fechasFeriados,
+          ...fechasDiasSinClase,
           ].filter(Boolean))
         ].sort();
 
@@ -188,12 +201,21 @@ function AsistenciaContenido() {
         setAlumnos(alumnosFormateados);
         setAsistencias(asisFormateadas);
         // Dias no laborables
-        setFeriados( Array.isArray(feriadosData) ? feriadosData.map(f => ({
-            fecha: f.fecha,
-            tipo: f.tipoEvento?.nombre,
-            descripcion: f.descripcion,
-        }))
-        : [] );
+        setFeriados([
+  ...(Array.isArray(feriadosData)
+    ? feriadosData.map(f => ({
+        fecha: f.fecha,
+        tipo: f.tipoEvento?.nombre,
+        descripcion: f.descripcion,
+      }))
+    : []),
+
+  ...diasSinClaseComision.map(f => ({
+    fecha: f.fecha,
+    tipo: f.tipoEvento?.nombre,
+    descripcion: f.descripcion,
+  })),
+]);
       } catch (e) {
         setError(e.message ?? "Error.");
       } finally {
@@ -232,19 +254,36 @@ function AsistenciaContenido() {
             )}
 
             {/* Tab Docentes — solo admin */}
-            {isAdmin && (
-              <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
-                <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-green-800 shadow-sm">
-                  🧑‍🎓 Estudiantes
-                </div>
-                <button
-                  onClick={() => router.push("/asistencia-docente")}
-                  className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-500 transition hover:text-gray-700"
-                >
-                  👨‍🏫 Docentes
-                </button>
-              </div>
-            )}
+            {/* Tabs + edición */}
+          <div className="flex items-center gap-3 flex-wrap">
+
+        {/* Tab Docentes — solo admin */}
+  {isAdmin && (
+    <>
+      <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
+        <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-green-800 shadow-sm">
+          🧑‍🎓 Estudiantes
+        </div>
+
+        <button
+          onClick={() => router.push("/asistencia-docente")}
+          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-500 transition hover:text-gray-700"
+        >
+          👨‍🏫 Docentes
+        </button>
+      </div>
+
+      {/* Botón editar — SOLO ADMIN */}
+      <button
+        onClick={() => router.push("/asistencias/editar-ausencia")}
+        className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition hover:bg-amber-100"
+      >
+        ✏️ Editar
+      </button>
+    </>
+  )}
+
+</div>
           </div>
         </div>
 
