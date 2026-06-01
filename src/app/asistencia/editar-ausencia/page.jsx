@@ -19,7 +19,7 @@ function EditarAusenciaContenido() {
   const router = useRouter();
   const { usuario } = useAuth();
 
-  //setea los headers
+  // setea los headers
   const headers = useMemo(
     () => ({
       Accept: "application/json",
@@ -32,6 +32,7 @@ function EditarAusenciaContenido() {
   const [materias, setMaterias] = useState([]);
   const [comisiones, setComisiones] = useState([]);
   const [diasSinClase, setDiasSinClase] = useState([]);
+  const [tipoEventos, setTipoEventos] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -43,11 +44,14 @@ function EditarAusenciaContenido() {
   const [fecha, setFecha] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [sinClase, setSinClase] = useState(true);
+  
+  // ID seleccionado por el dropdown
+  const [tipoEventoId, setTipoEventoId] = useState("e4149267-e3dd-4824-abde-1cd9a6a09699");
 
-  // dia sin clase
-  const TIPO_EVENTO_DIA_SIN_CLASE =
-    "e4149267-e3dd-4824-abde-1cd9a6a09699";
+  // dia sin clase por defecto
+  const TIPO_EVENTO_DIA_SIN_CLASE = "e4149267-e3dd-4824-abde-1cd9a6a09699";
 
+  // un solo viaje de red al endpoint unificado
   useEffect(() => {
     if (!usuario || !BACK_URL) return;
 
@@ -56,52 +60,53 @@ function EditarAusenciaContenido() {
       setError("");
 
       try {
-        const [resMat, resCom, resDias] = await Promise.all([
-          fetch(`${BACK_URL}/api/materias`, { headers }),
-          fetch(`${BACK_URL}/api/comisiones`, { headers }),
-          fetch(`${BACK_URL}/api/diaSinClase`, { headers }),
-        ]);
+        const response = await fetch(`${BACK_URL}/api/diaSinClase/formData`, { headers });
+        
+        if (!response.ok) {
+          throw new Error("No se pudieron cargar los datos iniciales.");
+        }
+        
+        const data = await response.json();
 
-        const materiasData = await resMat.json();
-        const comisionesData = await resCom.json();
-        const diasData = await resDias.json();
-
-        setMaterias(Array.isArray(materiasData) ? materiasData : []);
-        setComisiones(Array.isArray(comisionesData) ? comisionesData : []);
-        setDiasSinClase(Array.isArray(diasData) ? diasData : []);
-      } catch {
-        setError("Error cargando datos.");
+        // Mapeamos los arrays directamente desde la respuesta unificada del back
+        setMaterias(Array.isArray(data.materias) ? data.materias : []);
+        setComisiones(Array.isArray(data.comisiones) ? data.comisiones : []);
+        setDiasSinClase(Array.isArray(data.diasSinClase) ? data.diasSinClase : []);
+        setTipoEventos(Array.isArray(data.tipoEventos) ? data.tipoEventos : []);
+      } catch (e) {
+        setError(e.message || "Error cargando datos.");
       } finally {
         setLoading(false);
       }
     })();
   }, [usuario, headers]);
 
-  const comisionesFiltradas = useMemo(() => {
-    if (!materiaId) return comisiones;
-
-    return comisiones.filter(
-      c => String(c.materiaId) === String(materiaId)
+  const comisionesFiltradas = !materiaId
+  ? comisiones
+  : comisiones.filter(
+      (comision) =>
+        String(comision.materiaId) === String(materiaId)
     );
-  }, [materiaId, comisiones]);
 
-  const registroExistente = useMemo(() => {
-    if (!comisionId || !fecha) return null;
-
-    return diasSinClase.find(
-      d =>
-        String(d.comisionId) === String(comisionId) &&
-        d.fecha === fecha
-    );
-  }, [diasSinClase, comisionId, fecha]);
+  const registroExistente =
+  !comisionId || !fecha
+    ? null
+    : diasSinClase.find(
+        (diaSinClase) =>
+          String(diaSinClase.comisionId) ===
+            String(comisionId) &&
+          diaSinClase.fecha === fecha
+      );
 
   useEffect(() => {
     if (registroExistente) {
       setSinClase(true);
       setDescripcion(registroExistente.descripcion || "");
+      setTipoEventoId(registroExistente.tipoEventoId || TIPO_EVENTO_DIA_SIN_CLASE);
     } else {
       setSinClase(false);
       setDescripcion("");
+      setTipoEventoId(TIPO_EVENTO_DIA_SIN_CLASE);
     }
   }, [registroExistente]);
 
@@ -116,9 +121,7 @@ function EditarAusenciaContenido() {
     setSuccess("");
 
     try {
-      // marcar día SIN clases
       if (sinClase) {
-        // Si ya existe, no crear duplicado
         if (registroExistente) {
           setSuccess("El día ya estaba marcado como sin clases.");
           return;
@@ -126,37 +129,32 @@ function EditarAusenciaContenido() {
 
         const body = {
           fecha,
-          descripcion:
-            descripcion.trim() || "No hubo clases",
-          tipoEventoId: TIPO_EVENTO_DIA_SIN_CLASE,
+          descripcion: descripcion.trim() || "No hubo clases",
+          tipoEventoId: tipoEventoId, // Envía el ID dinámico elegido por el administrador
           comisionId,
         };
 
-        const res = await fetch(`${BACK_URL}/api/diaSinClase`, {
+        const response = await fetch(`${BACK_URL}/api/diaSinClase`, {
           method: "POST",
           headers,
           body: JSON.stringify(body),
         });
 
-        if (!res.ok) {
+        if (!response.ok) {
           throw new Error("No se pudo guardar el día sin clases.");
         }
 
-        const nuevo = await res.json();
-
+        const nuevo = await response.json();
         setDiasSinClase(prev => [...prev, nuevo]);
-
         setSuccess("Día marcado correctamente como sin clases.");
-      }
-
-      // ✅ Hubo clases → eliminar excepción
+      } 
       else {
         if (!registroExistente) {
           setSuccess("Ese día ya figura con clases normales.");
           return;
         }
 
-        const res = await fetch(
+        const response = await fetch(
           `${BACK_URL}/api/diaSinClase/${registroExistente.diaSinClaseId}`,
           {
             method: "DELETE",
@@ -164,18 +162,13 @@ function EditarAusenciaContenido() {
           }
         );
 
-        if (!res.ok) {
+        if (!response.ok) {
           throw new Error("No se pudo restaurar el día de clases.");
         }
 
         setDiasSinClase(prev =>
-          prev.filter(
-            d =>
-              d.diaSinClaseId !==
-              registroExistente.diaSinClaseId
-          )
+          prev.filter(diaSinClase => diaSinClase.diaSinClaseId !== registroExistente.diaSinClaseId)
         );
-
         setSuccess("El día volvió a marcarse como día normal de clases.");
       }
     } catch (e) {
@@ -195,7 +188,6 @@ function EditarAusenciaContenido() {
             <h1 className="text-2xl font-bold text-gray-800">
               Editar días sin clase
             </h1>
-
             <p className="mt-1 text-sm text-gray-500">
               Configurá excepciones de asistencia por comisión.
             </p>
@@ -224,7 +216,6 @@ function EditarAusenciaContenido() {
                 <label className="text-sm font-medium text-gray-700">
                   Materia
                 </label>
-
                 <select
                   value={materiaId}
                   onChange={(e) => {
@@ -234,12 +225,8 @@ function EditarAusenciaContenido() {
                   className="rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-200"
                 >
                   <option value="">Seleccionar materia</option>
-
                   {materias.map((m) => (
-                    <option
-                      key={m.materiaId}
-                      value={m.materiaId}
-                    >
+                    <option key={m.materiaId} value={m.materiaId}>
                       {m.nombre}
                     </option>
                   ))}
@@ -251,23 +238,16 @@ function EditarAusenciaContenido() {
                 <label className="text-sm font-medium text-gray-700">
                   Comisión
                 </label>
-
                 <select
                   value={comisionId}
                   onChange={(e) => setComisionId(e.target.value)}
                   className="rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-200"
                 >
                   <option value="">Seleccionar comisión</option>
-
                   {comisionesFiltradas.map((c) => (
-                    <option
-                      key={c.comisionId}
-                      value={c.comisionId}
-                    >
+                    <option key={c.comisionId} value={c.comisionId}>
                       {c.cod_comision}
-                      {c.materia?.nombre
-                        ? ` — ${c.materia.nombre}`
-                        : ""}
+                      {c.materia?.nombre ? ` — ${c.materia.nombre}` : ""}
                     </option>
                   ))}
                 </select>
@@ -278,7 +258,6 @@ function EditarAusenciaContenido() {
                 <label className="text-sm font-medium text-gray-700">
                   Fecha
                 </label>
-
                 <input
                   type="date"
                   value={fecha}
@@ -294,7 +273,6 @@ function EditarAusenciaContenido() {
                     <h2 className="text-sm font-semibold text-gray-800">
                       Estado del día
                     </h2>
-
                     <p className="mt-1 text-xs text-gray-500">
                       Definí si hubo clases o no para esta comisión.
                     </p>
@@ -302,9 +280,7 @@ function EditarAusenciaContenido() {
 
                   <div
                     className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      sinClase
-                        ? "bg-red-100 text-red-700"
-                        : "bg-green-100 text-green-700"
+                      sinClase ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
                     }`}
                   >
                     {sinClase ? "Sin clases" : "Hubo clases"}
@@ -318,17 +294,35 @@ function EditarAusenciaContenido() {
                     onChange={(e) => setSinClase(e.target.checked)}
                     className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                   />
-
                   Marcar este día como “sin clases”
                 </label>
               </div>
+
+              {/* Dropdown de Tipo de Evento (Solo visible si 'sinClase' está activo) */}
+              {sinClase && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-gray-700">
+                    Motivo / Tipo de Evento
+                  </label>
+                  <select
+                    value={tipoEventoId}
+                    onChange={(e) => setTipoEventoId(e.target.value)}
+                    className="rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-200"
+                  >
+                    {tipoEventos.map((t) => (
+                      <option key={t.tipoEventoId} value={t.tipoEventoId}>
+                        {t.nombre || t.descripcion || "Evento sin nombre"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Descripción */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">
                   Descripción
                 </label>
-
                 <textarea
                   value={descripcion}
                   onChange={(e) => setDescripcion(e.target.value)}
