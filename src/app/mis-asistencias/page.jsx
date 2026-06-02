@@ -264,7 +264,7 @@ const fechas = [
               switch (evento.tipo) {
 
                 case "Cancelación de clase":
-                  texto = "F";
+                  texto = "C";
                   container = "border-yellow-200 bg-yellow-50";
                   textoColor = "text-yellow-700";
                 break;
@@ -273,12 +273,6 @@ const fechas = [
                   texto = "NL";
                   container = "border-blue-200 bg-blue-50";
                   textoColor = "text-blue-700";
-                break;
-
-                case "Paro docente":
-                  texto = "PD";
-                  container = "border-orange-200 bg-orange-50";
-                  textoColor = "text-orange-700";
                 break;
 
                 default:
@@ -318,18 +312,14 @@ const fechas = [
             </span>
             <span className="flex items-center gap-1">
               <span className="inline-block h-3 w-3 rounded bg-yellow-200"/>
-              Cancelación (F)
+              Cancelación (C)
             </span>
 
             <span className="flex items-center gap-1">
               <span className="inline-block h-3 w-3 rounded bg-blue-200"/>
                 No laborable (NL)
               </span>
-
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-3 w-3 rounded bg-orange-200"/>
-                Paro docente (PD)
-            </span>
+           
           </div>
         </div>
       )}

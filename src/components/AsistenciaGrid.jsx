@@ -118,18 +118,13 @@ export default function AsistenciaGrid({
           switch (evento.tipo) {
 
             case "Cancelación de clase":
-              texto = "F";
+              texto = "C";
               estilos = "bg-yellow-100 text-yellow-700";
             break;
 
             case "Día no laborable":
               texto = "NL";
               estilos = "bg-blue-100 text-blue-700";
-            break;
-
-            case "Paro docente":
-              texto = "PD";
-              estilos = "bg-orange-100 text-orange-700";
             break;
 
             default:
@@ -166,16 +161,12 @@ export default function AsistenciaGrid({
           Ausente
         </span>
         <span className="flex items-center gap-1">
-        <span className="inline-flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-yellow-100 text-xs font-bold text-yellow-700">F</span>
+        <span className="inline-flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-yellow-100 text-xs font-bold text-yellow-700">C</span>
           Cancelacion de clase
         </span>
         <span className="flex items-center gap-1">
         <span className="inline-flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">NL</span>
           No laborable
-        </span>
-        <span className="flex items-center gap-1">
-        <span className="inline-flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-700">PD</span>
-          Paro docente
         </span>
       </div>
     </div>

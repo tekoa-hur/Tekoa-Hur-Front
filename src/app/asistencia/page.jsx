@@ -275,7 +275,7 @@ function AsistenciaContenido() {
 
       {/* Botón editar — SOLO ADMIN */}
       <button
-        onClick={() => router.push("/asistencias/editar-ausencia")}
+        onClick={() => router.push("/asistencia/editar-ausencia")}
         className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition hover:bg-amber-100"
       >
         ✏️ Editar
