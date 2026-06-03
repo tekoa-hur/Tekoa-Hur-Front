@@ -80,6 +80,14 @@ const MENU_ITEMS = [
     roles:       ["docente", "administrador"],
   },
   {
+    href:        "/admin-aulas",
+    label:       "Gestión de Aulas",
+    description: "Configurá los atributos y equipamiento de cada aula",
+    icon:        "🏛️",
+    variant:     "secondary",
+    roles:       ["administrador"],
+  },
+  {
     href:        "/admin-usuarios",
     label:       "Gestión de Usuarios",
     description: "Administrá los accesos y roles del sistema",
