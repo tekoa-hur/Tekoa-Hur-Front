@@ -275,7 +275,21 @@ function AsistenciaContenido() {
 
       {/* Botón editar — SOLO ADMIN */}
       <button
-        onClick={() => router.push("/asistencia/editar-ausencia")}
+       onClick={() => {
+          // Construimos la ruta base
+          let ruta = "/asistencia/editar-ausencia";
+          const params = new URLSearchParams();
+    
+          // Si hay parámetros seleccionados, los agregamos a la URL
+          if (materiaId) params.append("materiaId", materiaId);
+          if (comisionId) params.append("comisionId", comisionId);
+          
+          const queryString = params.toString();
+          if (queryString) ruta += `?${queryString}`;
+
+          router.push(ruta);
+        }}
+        
         className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition hover:bg-amber-100"
       >
         ✏️ Editar
