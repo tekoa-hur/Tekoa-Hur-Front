@@ -68,49 +68,24 @@ function correspondeADiaDeCursada(fecha, horarios = []) {
 
 /**
  * Genera todas las fechas de cursada de una comisión.
- *
- * Recorre día por día desde el inicio del período hasta hoy
- * (o hasta el fin del período si éste ya terminó).
- *
- * Solo agrega las fechas que coinciden con los días en los que la comisión tiene clases.
+ * Recorre día por día desde el inicio del período hasta hoy.
  */
 function generarFechasCursada(periodo, horarios) {
-
-    // Si no tenemos fechas válidas del período, no podemos construir la grilla.
     if (!periodo?.fecha_inicio_dictado || !periodo?.fecha_fin_dictado) {
         return [];
     }
 
-    // Fecha actual en formato YYYY-MM-DD
     const hoy = new Date().toISOString().slice(0, 10);
-
-    // Si el período sigue vigente usamos hoy. Si ya terminó usamos la fecha de fin del período.
-    const fechaLimite =
-        hoy < periodo.fecha_fin_dictado
-            ? hoy
-            : periodo.fecha_fin_dictado;
-
-    // Se guardan todas las fechas de cursada.
+    const fechaLimite = hoy < periodo.fecha_fin_dictado ? hoy : periodo.fecha_fin_dictado;
     const fechas = [];
-
-    // Fecha desde donde comenzamos a recorrer.
     let actual = new Date(`${periodo.fecha_inicio_dictado}T00:00:00`);
-
-    // Fecha máxima a recorrer.
     const fin = new Date(`${fechaLimite}T00:00:00`);
 
-    // Recorremos día por día.
     while (actual <= fin) {
-
-        // Convertimos la fecha al formato YYYY-MM-DD.
         const fecha = actual.toISOString().slice(0, 10);
-
-        // Solo agregamos los días que corresponden a la cursada de la comisión.
         if (correspondeADiaDeCursada(fecha, horarios)) {
             fechas.push(fecha);
         }
-
-        // Avanzamos un día.
         actual.setDate(actual.getDate() + 1);
     }
 
@@ -125,19 +100,11 @@ export default function AsistenciaPage() {
     );
 }
 
-// ── Genera y descarga un archivo Excel con la grilla de asistencia ──────────
 function descargarExcel({ titulo, alumnos, fechas, asistencias }) {
-    // Construimos el CSV manualmente y lo descargamos como .xlsx con BOM UTF-8
-    // (Excel lo abre correctamente sin necesidad de librerías externas)
     const BOM = "\uFEFF";
-
-    // Encabezados: Nombre, DNI, fecha1, fecha2, ...
     const encabezados = ["Nombre y apellido", "DNI", ...fechas].join(";");
-
-    // Mapa rápido: "alumnoId-fecha" → presente
     const asisSet = new Set(asistencias.map(a => `${a.alumnoId}-${a.fecha}`));
 
-    // Filas
     const filas = [...alumnos]
         .sort((a, b) => a.apellido.localeCompare(b.apellido))
         .map(alumno => {
@@ -166,21 +133,16 @@ function AsistenciaContenido() {
     const isAdmin = usuario?.rol === "administrador";
     const headers = useMemo(() => ({ Accept: "application/json", ...getAuthHeaders() }), []);
 
-    // Dias no laborables
     const [feriados, setFeriados] = useState([]);
-
-    // Catálogo
-    const [materias, setMaterias] = useState([]);  // solo admin
-    const [comisiones, setComisiones] = useState([]);  // todas o filtradas por materia
+    const [materias, setMaterias] = useState([]);
+    const [comisiones, setComisiones] = useState([]);
     const [loadingCat, setLoadingCat] = useState(true);
     const [error, setError] = useState("");
 
-    // Filtros
-    const [materiaId, setMateriaId] = useState("");  // solo admin
+    const [materiaId, setMateriaId] = useState("");
     const [comisionId, setComisionId] = useState("");
-    const [mostrarTodas, setMostrarTodas] = useState(false); // admin: ver todas las comisiones
+    const [mostrarTodas, setMostrarTodas] = useState(false);
 
-    // Datos de asistencia
     const [fechas, setFechas] = useState([]);
     const [alumnos, setAlumnos] = useState([]);
     const [asistencias, setAsistencias] = useState([]);
@@ -193,7 +155,6 @@ function AsistenciaContenido() {
             setLoadingCat(true); setError("");
             try {
                 if (isDocente) {
-                    // Docente: solo sus comisiones
                     const [resProf, resCom] = await Promise.all([
                         fetch(`${BACK_URL}/api/profesores`, { headers }),
                         fetch(`${BACK_URL}/api/comisiones`, { headers }),
@@ -210,7 +171,6 @@ function AsistenciaContenido() {
                             : []
                     );
                 } else {
-                    // Admin: cargar materias y todas las comisiones
                     const [resMat, resCom] = await Promise.all([
                         fetch(`${BACK_URL}/api/materias`, { headers }),
                         fetch(`${BACK_URL}/api/comisiones`, { headers }),
@@ -228,7 +188,6 @@ function AsistenciaContenido() {
         })();
     }, [usuario, isDocente, headers]);
 
-    // ── Comisiones filtradas según materia elegida (admin) ───────
     const comisionesFiltradas = useMemo(() => {
         if (isDocente) return comisiones;
         if (!materiaId || mostrarTodas) return comisiones;
@@ -246,7 +205,6 @@ function AsistenciaContenido() {
                 const [resAsis, resCom, resFeriados, resDiasSinClase, resPeriodo] = await Promise.all([
                     fetch(`${BACK_URL}/api/asistencias?comisionId=${comisionId}`, { headers }),
                     fetch(`${BACK_URL}/api/comisiones/${comisionId}`, { headers }),
-                    // Para dias no laborable
                     fetch(`${BACK_URL}/api/feriados`, { headers }),
                     fetch(`${BACK_URL}/api/diaSinClase`, { headers }),
                     fetch(`${BACK_URL}/api/guarani/periodos-tekoa`, { headers }),
@@ -256,7 +214,6 @@ function AsistenciaContenido() {
                 const registros = await resAsis.json();
                 const comData = resCom.ok ? await resCom.json() : comisionInfo;
 
-                // Dia no laborable
                 const feriadosData = resFeriados.ok ? await resFeriados.json() : [];
                 const diasSinClaseData = resDiasSinClase.ok ? await resDiasSinClase.json() : [];
                 const periodoData = resPeriodo.ok ? extraerPeriodoTekoa(await resPeriodo.json()) : null;
@@ -264,8 +221,6 @@ function AsistenciaContenido() {
                     throw new Error(`No se pudo cargar el periodo ${PERIODO_TEKOA} desde Guarani.`);
                 }
 
-
-                //Filtrar SOLO la comisión actual
                 const diasSinClaseComision = diasSinClaseData.filter(
                     d => String(d.comisionId) === String(comisionId)
                 );
@@ -282,32 +237,8 @@ function AsistenciaContenido() {
                     r => r.tipoUsuario === "ESTUDIANTE" && estaEnPeriodo(r.fecha, periodoData)
                 );
 
-                // Mostrar feriados solo dentro del periodo de dictado
-                const fechasFeriados = feriadosData
-                    .map(f => f.fecha)
-                    .filter(f =>
-                        estaEnPeriodo(f, periodoData) &&
-                        correspondeADiaDeCursada(f, horariosComision)
-                    );
+                const fechasOrd = generarFechasCursada(periodoData, horariosComision);
 
-                // filtra los dias que no hubo clases
-                const fechasDiasSinClase = diasSinClaseComision
-                    .map(f => f.fecha)
-                    .filter(f =>
-                        estaEnPeriodo(f, periodoData) &&
-                        correspondeADiaDeCursada(f, horariosComision)
-                    );
-
-            /**
-            * Genera todas las fechas que deberían existir en la cursada hasta el día de hoy.
-            * Ya no dependemos de que exista una asistencia cargada.
-            */
-                const fechasOrd = generarFechasCursada(
-                    periodoData,
-                    horariosComision
-                );
-
-                //Estados
                 const asisFormateadas = soloEstudiantes
                     .filter(r => r.estado === "PRESENTE")
                     .map(r => ({ alumnoId: String(r.usuarioId), fecha: r.fecha }));
@@ -315,26 +246,19 @@ function AsistenciaContenido() {
                 setFechas(fechasOrd);
                 setAlumnos(alumnosFormateados);
                 setAsistencias(asisFormateadas);
-                // Dias no laborables
+                
                 setFeriados([
                     ...(Array.isArray(feriadosData)
                         ? feriadosData
-                            .filter(f =>
-                                estaEnPeriodo(f.fecha, periodoData) &&
-                                correspondeADiaDeCursada(f.fecha, horariosComision)
-                            )
+                            .filter(f => estaEnPeriodo(f.fecha, periodoData) && correspondeADiaDeCursada(f.fecha, horariosComision))
                             .map(f => ({
                                 fecha: f.fecha,
                                 tipo: f.tipoEvento?.nombre,
                                 descripcion: f.descripcion,
                             }))
                         : []),
-
                     ...diasSinClaseComision
-                        .filter(f =>
-                            estaEnPeriodo(f.fecha, periodoData) &&
-                            correspondeADiaDeCursada(f.fecha, horariosComision)
-                        )
+                        .filter(f => estaEnPeriodo(f.fecha, periodoData) && correspondeADiaDeCursada(f.fecha, horariosComision))
                         .map(f => ({
                             fecha: f.fecha,
                             tipo: f.tipoEvento?.nombre,
@@ -378,11 +302,8 @@ function AsistenciaContenido() {
                             </button>
                         )}
 
-                        {/* Tab Docentes — solo admin */}
-                        {/* Tabs + edición */}
+                        {/* Controles de navegación y edición */}
                         <div className="flex items-center gap-3 flex-wrap">
-
-                            {/* Tab Docentes — solo admin */}
                             {isAdmin && (
                                 <>
                                     <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
@@ -398,16 +319,24 @@ function AsistenciaContenido() {
                                         </button>
                                     </div>
 
-                                    {/* Botón editar — SOLO ADMIN */}
+                                    {/* Botón editar con query params */}
                                     <button
-                                        onClick={() => router.push("/asistencia/editar-ausencia")}
+                                        onClick={() => {
+                                            let ruta = "/asistencia/editar-ausencia";
+                                            const params = new URLSearchParams();
+                                            if (materiaId) params.append("materiaId", materiaId);
+                                            if (comisionId) params.append("comisionId", comisionId);
+                                            
+                                            const queryString = params.toString();
+                                            if (queryString) ruta += `?${queryString}`;
+                                            router.push(ruta);
+                                        }}
                                         className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition hover:bg-amber-100"
                                     >
                                         ✏️ Editar
                                     </button>
                                 </>
                             )}
-
                         </div>
                     </div>
                 </div>
@@ -446,7 +375,6 @@ function AsistenciaContenido() {
                                 <label htmlFor="comision" className="text-sm font-medium text-gray-700">
                                     {isDocente ? "Tu comisión" : "Comisión"}
                                 </label>
-                                {/* Opción "Ver todas" para admin cuando hay materia seleccionada */}
                                 {isAdmin && materiaId && (
                                     <button
                                         onClick={() => {
@@ -511,6 +439,7 @@ function AsistenciaContenido() {
                     </div>
                 )}
 
+                {/* Mensajes de Estado, Carga y Grilla */}
                 {error && (
                     <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
                 )}
