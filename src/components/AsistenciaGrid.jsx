@@ -18,8 +18,17 @@ export default function AsistenciaGrid({
   mostrarDni = true,
   mostrarVolver = true,
 }) {
-  const asistenciaSet = useMemo(() => {
-    return new Set(asistencias.map(a => `${a.alumnoId}-${a.fecha}`));
+  const asistenciaMap = useMemo(() => {
+    const map = new Map();
+
+    asistencias.forEach(a => {
+      map.set(
+        `${a.alumnoId}-${a.fecha}`,
+        a.estado
+      );
+    });
+
+    return map;
   }, [asistencias]);
 
   //Crear mapa de eventos
@@ -46,10 +55,12 @@ export default function AsistenciaGrid({
         // Todavía NO decidimos si es P o A.
         fechas: fechasOrdenadas.map(f => ({
           fecha: f,
-          tieneAsistencia: asistenciaSet.has(`${alumno.id}-${f}`),
+          estado: asistenciaMap.get(
+            `${alumno.id}-${f}`
+          ),
         })),
       }));
-  }, [alumnos, fechasOrdenadas, asistenciaSet]);
+  }, [alumnos, fechasOrdenadas, asistenciaMap]);
 
   if (alumnos.length === 0 && fechas.length === 0) {
     return (
@@ -106,19 +117,23 @@ export default function AsistenciaGrid({
                   <td className="px-4 py-3 font-mono text-xs text-gray-500">{fila.dni}</td>
                 )}
                 {/* Mapeo las fechas para mostrar P/A o Feriados, con estilos según el caso */}
-                {fila.fechas.map(({ fecha, tieneAsistencia }) => {
+                {fila.fechas.map(({ fecha, estado }) => {
                   const evento = feriadosMap.get(fecha);
 
-                  // Por defecto mostramos pendiente de carga
+                  // Por defecto: pendiente
                   let texto = "-";
+                  let estilos = "bg-gray-100 text-gray-500";
 
-                  let estilos =
-                    "bg-gray-100 text-gray-500";
-
-                  // Si existe asistencia cargada mostramos presente
-                  if (tieneAsistencia) {
+                  // Presente
+                  if (estado === "PRESENTE") {
                     texto = "P";
                     estilos = "bg-green-100 text-green-700";
+                  }
+
+                  // Ausente (manual o automático)
+                  if (estado === "AUSENTE") {
+                    texto = "A";
+                    estilos = "bg-red-100 text-red-600";
                   }
 
                   if (evento) {

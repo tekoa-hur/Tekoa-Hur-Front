@@ -298,19 +298,21 @@ function AsistenciaContenido() {
                         correspondeADiaDeCursada(f, horariosComision)
                     );
 
-            /**
-            * Genera todas las fechas que deberían existir en la cursada hasta el día de hoy.
-            * Ya no dependemos de que exista una asistencia cargada.
-            */
+                /**
+                * Genera todas las fechas que deberían existir en la cursada hasta el día de hoy.
+                * Ya no dependemos de que exista una asistencia cargada.
+                */
                 const fechasOrd = generarFechasCursada(
                     periodoData,
                     horariosComision
                 );
 
                 //Estados
-                const asisFormateadas = soloEstudiantes
-                    .filter(r => r.estado === "PRESENTE")
-                    .map(r => ({ alumnoId: String(r.usuarioId), fecha: r.fecha }));
+                const asisFormateadas = soloEstudiantes.map(r => ({
+                    alumnoId: String(r.usuarioId),
+                    fecha: r.fecha,
+                    estado: r.estado,
+                }));
 
                 setFechas(fechasOrd);
                 setAlumnos(alumnosFormateados);
