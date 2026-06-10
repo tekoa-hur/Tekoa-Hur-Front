@@ -80,6 +80,14 @@ const MENU_ITEMS = [
     roles:       ["docente", "administrador"],
   },
   {
+    href:        "/admin-qr-espacio",
+    label:       "QR de Aulas",
+    description: "Generá códigos QR permanentes para cada aula",
+    icon:        "📱",
+    variant:     "secondary",
+    roles:       ["administrador"],
+  },
+  {
     href:        "/admin-aulas",
     label:       "Gestión de Aulas",
     description: "Configurá los atributos y equipamiento de cada aula",
