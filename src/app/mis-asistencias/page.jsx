@@ -89,6 +89,15 @@ function MisAsistenciasContenido() {
   const [comisiones, setComisiones] = useState([]); // [{comision, asistencias[]}]
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  // Estado para el filtro del select
+  const [comisionSeleccionada, setComisionSeleccionada] = useState("TODAS");
+
+  // Estado para almacenar las comisiones ya filtradas
+  const [comisionesFiltradas, setComisionesFiltradas] = useState([]);
+
+  // Estado para controlar el spinner de descargas
+  const [descargando, setDescargando] = useState(false);
 
   // Redirigir si no es alumno
   useEffect(() => {
@@ -96,6 +105,7 @@ function MisAsistenciasContenido() {
     if (!authLoading && usuario?.rol !== "alumno") { router.push("/"); }
   }, [authLoading, usuario, router]);
 
+  // Fetch inicial de datos
   useEffect(() => {
     if (!usuario || usuario.rol !== "alumno") return;
 
@@ -107,7 +117,6 @@ function MisAsistenciasContenido() {
           throw new Error("No se pudo identificar el DNI del estudiante.");
         }
 
-        // 1. Obtener el estudiante con sus comisiones (sin materia/profesor incluidos)
         const resEst = await fetch(`${BACK_URL}/api/estudiantes/${dniEstudiante}`, { headers });
         if (!resEst.ok) throw new Error("No se pudieron cargar tus comisiones.");
         const estData = await resEst.json();
@@ -127,37 +136,26 @@ function MisAsistenciasContenido() {
           throw new Error(`No se pudo cargar el periodo ${PERIODO_TEKOA} desde Guarani.`);
         }
 
-        // 2. Para cada comisión, cargar el detalle completo (con materia y profesor)
-        //    y las asistencias filtradas por esa comisión
         const resultados = await Promise.all(
           comisionesRaw.map(async (com) => {
             const comisionId = com.comisionId ?? com.id;
 
             const [resDetalle, resAsis, resFeriados, resDiasSinClase] = await Promise.all([
-              // Detalle de la comisión con materia y profesor
               fetch(`${BACK_URL}/api/comisiones/${comisionId}`, { headers }),
-              // Asistencias de esta comisión — filtramos las del alumno en cliente
               fetch(`${BACK_URL}/api/asistencias?comisionId=${comisionId}`, { headers }),
-              // Feriados para marcar en la grilla
               fetch(`${BACK_URL}/api/feriados`, { headers }),
               fetch(`${BACK_URL}/api/diaSinClase`, { headers }),
             ]);
 
             const detalle = resDetalle.ok ? await resDetalle.json() : com;
             const asistencias = resAsis.ok ? await resAsis.json() : [];
-            //Feriados para marcar en la grilla
-            const feriadosData = resFeriados.ok
-              ? await resFeriados.json()
-              : [];
-            const diasSinClaseData = resDiasSinClase.ok
-              ? await resDiasSinClase.json()
-              : [];
+            const feriadosData = resFeriados.ok ? await resFeriados.json() : [];
+            const diasSinClaseData = resDiasSinClase.ok ? await resDiasSinClase.json() : [];
 
             const diasSinClaseComision = Array.isArray(diasSinClaseData)
               ? diasSinClaseData.filter(d => String(d.comisionId) === String(comisionId))
               : [];
 
-            // Transformar feriados y cancelaciones en eventos
             const eventos = [
               ...(Array.isArray(feriadosData) ? feriadosData : []),
               ...diasSinClaseComision,
@@ -172,7 +170,6 @@ function MisAsistenciasContenido() {
                 descripcion: f.descripcion,
               }));
 
-            // Filtrar solo las asistencias del alumno
             const misAsistencias = Array.isArray(asistencias)
               ? asistencias.filter(a =>
                 dnisEstudiante.has(normalizarDni(a.usuarioId)) &&
@@ -199,17 +196,138 @@ function MisAsistenciasContenido() {
     })();
   }, [usuario, headers]);
 
-  if (authLoading || !usuario) return null;
+  // useEffect que reemplaza el useMemo
+  useEffect(() => {
+    if (comisionSeleccionada === "TODAS") {
+      setComisionesFiltradas(comisiones);
+    } else {
+      const filtradas = comisiones.filter(c => {
+        const id = c.comision.comisionId ?? c.comision.id;
+        return String(id) === String(comisionSeleccionada);
+      });
+      setComisionesFiltradas(filtradas);
+    }
+  }, [comisiones, comisionSeleccionada]);
+
+  // Funcion para descargar el reporte desde el backend
+  const descargarReporteBackend = async (formato) => {
+    setDescargando(true);
+    try {
+      const authHeaders = getAuthHeaders();
+
+      let url = `${BACK_URL}/api/reportes/mis-asistencias?format=${formato}`;
+      if (comisionSeleccionada !== "TODAS") {
+        url += `&comisionId=${comisionSeleccionada}`;
+      }
+
+      const respuesta = await fetch(url, {
+        method: "GET",
+        headers: {
+          ...authHeaders,
+        },
+      });
+
+      if (!respuesta.ok) {
+        throw new Error(`Error del servidor al generar el reporte en ${formato.toUpperCase()}.`);
+      }
+
+      const blob = await respuesta.blob();
+
+      const contentDisposition = respuesta.headers.get("content-disposition");
+      let nombreArchivo = `Reporte_Asistencias.${formato}`;
+      
+      if (contentDisposition && contentDisposition.includes("filename=")) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) nombreArchivo = match[1];
+      }
+
+      // En lugar de forzar la descarga con link.click() para el PDF:
+    const urlBlob = window.URL.createObjectURL(blob);
+
+    if (formato === "pdf") {
+      // Abre el PDF en una pestaña nueva: Vista previa e impresión nativa asegurada
+      window.open(urlBlob, "_blank");
+    } else {
+      // El CSV se sigue descargando directo
+      const link = document.createElement("a");
+      link.href = urlBlob;
+      link.setAttribute("download", nombreArchivo);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    window.URL.revokeObjectURL(urlBlob);
+        } catch (e) {
+          alert(e.message ?? "Ocurrió un error al descargar el archivo.");
+        } finally {
+          setDescargando(false);
+        }
+      };
+
+      if (authLoading || !usuario) return null;
 
   return (
     <div className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-4xl">
 
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Mis Asistencias</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Historial de asistencia por comisión — {usuario.nombre}
-          </p>
+        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="shrink-0">
+            <h1 className="text-2xl font-bold text-gray-800">Mis Asistencias</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Historial de asistencia por comisión — {usuario.nombre}
+            </p>
+          </div>
+          
+          {!loading && !error && comisiones.length > 0 && (
+            <div className="flex flex-row items-center sm:flex-nowrap gap-2 w-full md:w-auto md:justify-end overflow-x-auto pb-1 sm:pb-0">
+              
+              <select
+                value={comisionSeleccionada}
+                onChange={(e) => setComisionSeleccionada(e.target.value)}
+                className="max-w-[180px] sm:max-w-[240px] truncate rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm font-semibold text-gray-700 shadow-sm outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-all cursor-pointer"
+              >
+                <option value="TODAS">Todas las materias</option>
+                {comisiones.map(({ comision }) => {
+                  const id = comision.comisionId ?? comision.id;
+                  const nombre = comision.materia?.nombre ?? comision.cod_comision ?? "Comisión";
+                  return (
+                    <option key={id} value={id}>
+                      {nombre} ({comision.cod_comision})
+                    </option>
+                  );
+                })}
+              </select>
+
+              {descargando && (
+                <span className="text-xs text-gray-400 animate-pulse shrink-0 px-1">
+                  Generando...
+                </span>
+              )}
+              
+              <button
+                onClick={() => descargarReporteBackend("csv")}
+                disabled={descargando}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 disabled:opacity-50"
+              >
+                <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                <span className="hidden sm:inline">CSV / Excel</span>
+                <span className="inline sm:hidden">CSV</span>
+              </button>
+
+              <button
+                onClick={() => descargarReporteBackend("pdf")}
+                disabled={descargando}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-green-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 disabled:opacity-50"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                </svg>
+                PDF
+              </button>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -234,18 +352,24 @@ function MisAsistenciasContenido() {
           </div>
         )}
 
+        {/* Mapeo sobre el estado sincronizado comisionesFiltradas */}
         {!loading && !error && comisiones.length > 0 && (
           <div className="flex flex-col gap-5">
-            {comisiones.map(({ comision, asistencias, eventos, periodo }) => (
-              <ComisionCard
-                key={comision.comisionId ?? comision.id}
-                comision={comision}
-                asistencias={asistencias}
-                eventos={eventos}
-                periodo={periodo}
-              />
-
-            ))}
+            {comisionesFiltradas.length === 0 ? (
+              <p className="text-center py-6 text-sm text-gray-500 bg-white rounded-2xl border border-gray-100">
+                No se encontraron registros para la opción seleccionada.
+              </p>
+            ) : (
+              comisionesFiltradas.map(({ comision, asistencias, eventos, periodo }) => (
+                <ComisionCard
+                  key={comision.comisionId ?? comision.id}
+                  comision={comision}
+                  asistencias={asistencias}
+                  eventos={eventos}
+                  periodo={periodo}
+                />
+              ))
+            )}
           </div>
         )}
 
@@ -254,102 +378,37 @@ function MisAsistenciasContenido() {
   );
 }
 
-
-/**
- * Genera todas las fechas de cursada de una comisión
- * desde el inicio del período hasta hoy (o hasta el fin del período,
- * si éste ya terminó).
- *
- * Solo incluye los días en los que realmente se cursa según los horarios de la comisión.
- */
 function generarFechasCursada(periodo, horarios) {
-
-  // Si no tenemos fechas de inicio o fin del período, no podemos generar la grilla.
-  if (!periodo?.fecha_inicio_dictado || !periodo?.fecha_fin_dictado) {
-    return [];
-  }
-
-  // Fecha actual en formato YYYY-MM-DD Ej: "2026-06-06"
+  if (!periodo?.fecha_inicio_dictado || !periodo?.fecha_fin_dictado) return [];
   const hoy = new Date().toISOString().slice(0, 10);
-
-  // Determinamos hasta qué fecha generar la grilla.
-  // Si el período sigue vigente: usamos la fecha de hoy.
-  // Si el período ya terminó: usamos la fecha de fin del período.
-  const fechaLimite =
-    hoy < periodo.fecha_fin_dictado
-      ? hoy
-      : periodo.fecha_fin_dictado;
-
-  // Array donde iremos guardando las fechas de cursada.
+  const fechaLimite = hoy < periodo.fecha_fin_dictado ? hoy : periodo.fecha_fin_dictado;
   const fechas = [];
-
-  // Fecha desde la que comenzamos a recorrer.
   let actual = new Date(`${periodo.fecha_inicio_dictado}T00:00:00`);
-
-  // Fecha máxima a recorrer.
   const fin = new Date(`${fechaLimite}T00:00:00`);
 
-  // Recorremos día por día desde el inicio hasta la fecha límite.
   while (actual <= fin) {
-    // Convertimos la fecha actual a formato YYYY-MM-DD
     const fecha = actual.toISOString().slice(0, 10);
-    // Verificamos si esa fecha corresponde a un día de cursada de la comisión.
-    // Ejemplo: Si la comisión cursa lunes y miércoles, solo agregaremos esas fechas.
     if (correspondeADiaDeCursada(fecha, horarios)) {
       fechas.push(fecha);
     }
-
-    // Avanzamos un día para seguir recorriendo.
     actual.setDate(actual.getDate() + 1);
   }
-
-  // Devolvemos todas las fechas de cursada encontradas.
   return fechas;
 }
 
 /* ─── Tarjeta de comisión ───────────────────────────────────── */
 function ComisionCard({ comision, asistencias, eventos = [], periodo }) {
-  // Fechas únicas ordenadas incluidos feriados para marcar en la grilla
-
   const eventosFiltrados = eventos.filter(e =>
     estaEnPeriodo(e.fecha, periodo) &&
     correspondeADiaDeCursada(e.fecha, comision?.horarios)
   );
 
-
-  // Todas las fechas de cursada hasta hoy
-  const fechas = generarFechasCursada(
-    periodo,
-    comision?.horarios
-  );
-
-  // Presencias del alumno
-  const presentes = new Set(
-    asistencias
-      .filter(a => String(a.estado).toUpperCase() === "PRESENTE")
-      .map(a => normalizarFecha(a.fecha))
-  );
-
-  //Mapeo de eventos para marcar feriados en la grilla
+  const fechas = generarFechasCursada(periodo, comision?.horarios);
   const eventosMap = new Map();
+  eventosFiltrados.forEach(e => eventosMap.set(e.fecha, e));
 
-  eventosFiltrados.forEach(e => {
-    eventosMap.set(e.fecha, e);
-  });
-
-
-  /*Asi contaria los feriados como clases y contarian en porcentajes
-  const totalClases   = fechas.length;*/
-  // Contar solo las fechas que no son feriados como clases
-  const totalClases = fechas.filter(fecha => {
-    const evento = eventosMap.get(fecha);
-    return !evento;
-  }).length;
-
-  const totalPresente = asistencias.filter(
-    a => String(a.estado).toUpperCase() === "PRESENTE"
-  ).length;
-
+  const totalClases = fechas.filter(fecha => !eventosMap.get(fecha)).length;
+  const totalPresente = asistencias.filter(a => String(a.estado).toUpperCase() === "PRESENTE").length;
   const porcentaje = totalClases > 0 ? Math.round((totalPresente / totalClases) * 100) : null;
 
   const colorPorcentaje =
@@ -358,14 +417,11 @@ function ComisionCard({ comision, asistencias, eventos = [], periodo }) {
         : porcentaje >= 60 ? "text-amber-600"
           : "text-red-600";
 
-  // Nombre de la materia — viene en comision.materia.nombre o en cod_comision
   const nombreMateria = comision.materia?.nombre ?? comision.cod_comision ?? "Comisión";
   const nombreDocente = comision.profesor?.nombre_apellido;
 
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
-
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-5 py-4">
         <div>
           <p className="text-sm font-bold text-gray-800">{nombreMateria}</p>
@@ -383,7 +439,6 @@ function ComisionCard({ comision, asistencias, eventos = [], periodo }) {
         )}
       </div>
 
-      {/* Grilla de fechas */}
       {fechas.length === 0 ? (
         <p className="px-5 py-4 text-sm text-gray-400">
           Aún no hay clases registradas en esta comisión.
@@ -392,57 +447,42 @@ function ComisionCard({ comision, asistencias, eventos = [], periodo }) {
         <div className="px-5 py-4">
           <div className="flex flex-wrap gap-2">
             {fechas.map(fecha => {
-
-              const asistencia = asistencias.find(
-                a => normalizarFecha(a.fecha) === fecha
-              );
-
+              const asistencia = asistencias.find(a => normalizarFecha(a.fecha) === fecha);
               const evento = eventosMap.get(fecha);
 
-              // Por defecto: asistencia pendiente de carga
               let texto = "-";
               let container = "border-gray-200 bg-gray-50";
               let textoColor = "text-gray-500";
 
-              // Eventos tienen prioridad
               if (evento) {
-
                 switch (evento.tipo) {
-
                   case "Cancelación de clase":
                     texto = "F";
                     container = "border-yellow-200 bg-yellow-50";
                     textoColor = "text-yellow-700";
                     break;
-
                   case "Día no laborable":
                     texto = "NL";
                     container = "border-blue-200 bg-blue-50";
                     textoColor = "text-blue-700";
                     break;
-
                   case "Paro docente":
                     texto = "PD";
                     container = "border-orange-200 bg-orange-50";
                     textoColor = "text-orange-700";
                     break;
-
                   default:
                     texto = "E";
                     container = "border-gray-200 bg-gray-50";
                     textoColor = "text-gray-700";
                 }
-
               } else if (asistencia) {
-
                 const estado = String(asistencia.estado).toUpperCase();
-
                 if (estado === "PRESENTE") {
                   texto = "P";
                   container = "border-green-200 bg-green-50";
                   textoColor = "text-green-700";
                 }
-
                 if (estado === "AUSENTE") {
                   texto = "A";
                   container = "border-red-200 bg-red-50";
@@ -459,7 +499,6 @@ function ComisionCard({ comision, asistencias, eventos = [], periodo }) {
                   <span className="text-xs text-gray-500 leading-tight">
                     {formatearFecha(fecha)}
                   </span>
-
                   <span className={`mt-1 text-sm font-bold ${textoColor}`}>
                     {texto}
                   </span>
@@ -468,33 +507,24 @@ function ComisionCard({ comision, asistencias, eventos = [], periodo }) {
             })}
           </div>
 
-          {/* Leyenda */}
-          <div className="mt-3 flex gap-4 text-xs text-gray-400">
+          <div className="mt-3 flex flex-wrap gap-4 text-xs text-gray-400">
             <span className="flex items-center gap-1">
-              <span className="inline-block h-3 w-3 rounded bg-green-200" />
-              Presente (P)
+              <span className="inline-block h-3 w-3 rounded bg-green-200" /> Presente (P)
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block h-3 w-3 rounded bg-red-200" />
-              Ausente (A)
+              <span className="inline-block h-3 w-3 rounded bg-red-200" /> Ausente (A)
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block h-3 w-3 rounded bg-yellow-200" />
-              Cancelación (F)
-            </span>
-
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-3 w-3 rounded bg-blue-200" />
-              No laborable (NL)
-            </span>
-
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-3 w-3 rounded bg-orange-200" />
-              Paro docente (PD)
+              <span className="inline-block h-3 w-3 rounded bg-yellow-200" /> Cancelación (F)
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block h-3 w-3 rounded bg-gray-200" />
-              Pendiente (-)
+              <span className="inline-block h-3 w-3 rounded bg-blue-200" /> No laborable (NL)
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-3 w-3 rounded bg-orange-200" /> Paro docente (PD)
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-3 w-3 rounded bg-gray-200" /> Pendiente (-)
             </span>
           </div>
         </div>
