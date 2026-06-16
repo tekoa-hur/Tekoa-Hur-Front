@@ -146,6 +146,7 @@ export default function RegistroAsistencia({
   const registrar = async (dniOverride, tipoOverride) => {
     const dniFinal = (dniOverride ?? dni).toString().trim();
     const tipoFinal = tipoOverride ?? tipoUsuario;
+
     if (!dniFinal) return;
 
     setRegistrando(true);
@@ -154,12 +155,70 @@ export default function RegistroAsistencia({
 
     try {
       const token = localStorage.getItem("tekoa_token");
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      let res, data;
+      const headers = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      // ── Geolocalización ─────────────────────────────────────
+      // Para el nuevo flujo de asistencia basado en qrToken,
+      // se solicita la ubicación actual del usuario.
+      //
+      // Estas coordenadas serán enviadas al backend para que
+      // valide que el usuario se encuentre dentro del radio
+      // permitido antes de registrar la asistencia.
+      //
+      // El flujo legacy no utiliza geolocalización y continúa funcionando sin modificaciones.
+      let latitudUsuario;
+      let longitudUsuario;
+
+      // Se utiliza la API Geolocation del navegador para obtener
+      // la ubicación actual del usuario.
+      //
+      // Las coordenadas obtenidas se envían al backend para validar
+      // que el registro de asistencia se realice dentro del radio permitido.
       if (modo === "nuevo") {
-        // Endpoint nuevo: body con { qrToken, tipoUsuario, usuarioId }
+        try {
+          const posicion = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+              resolve,
+              reject,
+              {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0,
+              }
+            );
+          });
+
+          latitudUsuario = posicion.coords.latitude;
+          longitudUsuario = posicion.coords.longitude;
+
+          //Para probar funcionamiento
+          console.log({
+            latitudUsuario,
+            longitudUsuario,
+          });
+
+        } catch {
+          setMsgError(
+            "Se requiere compartir la ubicación para registrar la asistencia."
+          );
+          setRegistrando(false);
+          return;
+        }
+      }
+
+      let res;
+      let data;
+
+      if (modo === "nuevo") {
+        // Endpoint nuevo: body con
+        // { qrToken, tipoUsuario, usuarioId, latitudUsuario, longitudUsuario }
         res = await fetch(`${BACK_URL}/api/qr/asistencia/registrar`, {
           method: "POST",
           headers,
@@ -167,8 +226,11 @@ export default function RegistroAsistencia({
             qrToken,
             tipoUsuario: tipoFinal,
             usuarioId: dniFinal,
+            latitudUsuario,
+            longitudUsuario,
           }),
         });
+
       } else {
         // Endpoint legacy: igual al original
         res = await fetch(`${BACK_URL}/api/asistencias/registrar-desde-qr`, {
@@ -187,20 +249,47 @@ export default function RegistroAsistencia({
 
       data = await res.json();
 
+      console.log("RESPUESTA BACKEND:", data);
+
       if (!res.ok) {
-        // 409 = ya registrado hoy → lo tratamos como info amistosa,
-        // no como error rojo.
+
+        // Ya registrado hoy
         if (res.status === 409) {
-          setMsgExito(data.message || "Ya estabas registrado hoy.");
+
+          setMsgExito(
+            data.message || "Ya estabas registrado hoy."
+          );
+
+          // Error de geolocalización
+        } else if (
+          res.status === 403 &&
+          data.message?.includes("Fuera del área permitida")
+        ) {
+
+          setMsgError(
+            "Debés encontrarte dentro del establecimiento para registrar la asistencia."
+          );
+
         } else {
-          setMsgError(data.message || "Error al registrar.");
+
+          setMsgError(
+            data.message || "Error al registrar."
+          );
         }
+
       } else {
-        setMsgExito(data.message || "✅ Asistencia registrada");
+
+        setMsgExito(
+          data.message || "✅ Asistencia registrada"
+        );
+
         setDni("");
       }
+
     } catch {
-      setMsgError("Error de red. Verificá tu conexión.");
+      setMsgError(
+        "Error de red. Verificá tu conexión."
+      );
     } finally {
       setRegistrando(false);
     }
@@ -311,8 +400,8 @@ export default function RegistroAsistencia({
                     {usuarioLogueado.rol === "alumno"
                       ? "Estudiante"
                       : usuarioLogueado.rol === "docente"
-                      ? "Docente"
-                      : "Administrador"}
+                        ? "Docente"
+                        : "Administrador"}
                   </p>
                 </div>
 
@@ -377,11 +466,10 @@ export default function RegistroAsistencia({
                         setMsgError("");
                         setMsgExito("");
                       }}
-                      className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-                        tipoUsuario === opt.v
-                          ? "bg-green-700 text-white"
-                          : "border border-gray-300 text-gray-600 hover:bg-gray-50"
-                      }`}
+                      className={`rounded-lg px-4 py-2 text-sm font-medium transition ${tipoUsuario === opt.v
+                        ? "bg-green-700 text-white"
+                        : "border border-gray-300 text-gray-600 hover:bg-gray-50"
+                        }`}
                     >
                       {opt.l}
                     </button>
@@ -449,7 +537,11 @@ export default function RegistroAsistencia({
                 )}
               </>
             )}
-
+            {msgError && (
+              <div className="mt-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                ⚠️ {msgError}
+              </div>
+            )}
             {/* Mensaje de éxito (ambos modos) */}
             {msgExito && (
               <div className="mt-3 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
