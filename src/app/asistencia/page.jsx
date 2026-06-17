@@ -1,4 +1,6 @@
 "use client";
+// Página principal de asistencia
+//app/asistencia/page.jsx
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useEffect, useMemo, useState } from "react";
