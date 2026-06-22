@@ -17,5 +17,11 @@ jobs:
         with:
           node-version: 20
 
-      - run: npm install
-      - run: npm run build
+       - name: Instalar dependencias
+        run: npm install
+
+      - name: Ejecutar tests
+        run: npm run test -- --run
+
+      - name: Build
+        run: npm run build
