@@ -38,7 +38,7 @@ describe("RegistroAsistencia - Usuario logueado", () => {
             "tekoa_user",
             JSON.stringify({
                 nombre: "Juan Pérez",
-                dni: "12345678",
+                dni: "55555555",
                 rol: "alumno",
             })
         );
@@ -73,7 +73,7 @@ describe("RegistroAsistencia - Usuario logueado", () => {
          * Verificamos DNI.
          */
         expect(
-            screen.getByText(/12345678/)
+            screen.getByText(/55555555/)
         ).toBeInTheDocument();
 
         /**
