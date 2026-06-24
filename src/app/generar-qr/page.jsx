@@ -27,7 +27,7 @@ export default function GenerarQRPage() {
   useEffect(() => {
     if (loading) return;
     if (usuario?.rol === "administrador") {
-      router.replace("/generar-qr-espacio");
+      router.replace("/admin-qr-espacio");
     }
   }, [usuario, loading, router]);
 

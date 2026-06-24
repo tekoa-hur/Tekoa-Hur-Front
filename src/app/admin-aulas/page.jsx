@@ -22,6 +22,7 @@
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { BACK_URL, getAuthHeaders } from "@/config/api";
 
@@ -34,6 +35,9 @@ export default function AdminAulasPage() {
 }
 
 function AdminAulasContenido() {
+  // ── Router para navegar al calendario ──────────────────────
+  const router = useRouter();
+
   // ── Estado: lista de aulas y sus atributos ─────────────────
   const [aulas, setAulas] = useState([]);
   const [atributosMap, setAtributosMap] = useState({}); // { aulaId: atributos o null }
@@ -429,6 +433,13 @@ function AdminAulasContenido() {
                       className="flex-1 rounded-lg bg-green-700 px-3 py-2 text-xs font-medium text-white transition hover:bg-green-800"
                     >
                       {tieneAtributos ? "Editar" : "Cargar"}
+                    </button>
+                    <button
+                      onClick={() => router.push(`/admin-calendario/${aula.aulaId}`)}
+                      className="rounded-lg border border-green-300 px-3 py-2 text-xs font-medium text-green-700 transition hover:bg-green-50"
+                      title="Ver calendario de ocupación"
+                    >
+                      📅
                     </button>
                     {tieneAtributos && (
                       <button
