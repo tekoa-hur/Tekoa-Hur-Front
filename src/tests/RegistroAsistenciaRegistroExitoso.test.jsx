@@ -78,7 +78,7 @@ describe("RegistroAsistencia - Registro exitoso", () => {
       "tekoa_user",
       JSON.stringify({
         nombre: "Juan Pérez",
-        dni: "12345678",
+        dni: "55555555",
         rol: "alumno",
       })
     );
