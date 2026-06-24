@@ -185,17 +185,39 @@ export default function LectorQR() {
       />
 
       {/* Resultado exitoso */}
-      {resultado && (
-        <div className="rounded-xl border border-green-300 bg-green-50 p-4">
-          <p className="mb-2 text-sm font-semibold text-green-700">✅ QR leído correctamente</p>
-          <a
-            href={resultado}
-            className="inline-block rounded-xl bg-green-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-800"
-          >
-            Continuar registro de asistencia
-          </a>
-        </div>
-      )}
+      {resultado && (() => {
+        // ── Detectar tipo de QR según la URL leída ─────────────
+        // La función no captura nada: solo lee `resultado` para decidir
+        // el texto y los colores del botón. De esta forma el botón es
+        // contextual al contenido escaneado.
+        let textoBoton = "Abrir enlace del QR";
+        let descripcion = "QR leído correctamente.";
+
+        if (typeof resultado === "string") {
+          if (resultado.includes("/espacio/")) {
+            // QR PERMANENTE de aula → lleva a ficha informativa del espacio
+            textoBoton = "Ver información del aula";
+            descripcion = "QR de AULA detectado. Te lleva a la ficha del espacio.";
+          } else if (resultado.includes("/registrar-asistencia")) {
+            // QR de ASISTENCIA generado por un docente para una clase puntual
+            textoBoton = "Continuar registro de asistencia";
+            descripcion = "QR de ASISTENCIA detectado.";
+          }
+        }
+
+        return (
+          <div className="rounded-xl border border-green-300 bg-green-50 p-4">
+            <p className="mb-1 text-sm font-semibold text-green-700">✅ QR leído correctamente</p>
+            <p className="mb-2 text-xs text-green-700/80">{descripcion}</p>
+            <a
+              href={resultado}
+              className="inline-block rounded-xl bg-green-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-800"
+            >
+              {textoBoton}
+            </a>
+          </div>
+        );
+      })()}
 
       {/* Error */}
       {error && (

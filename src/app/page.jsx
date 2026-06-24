@@ -22,6 +22,9 @@ function horaActual() {
 function horaMenorIgual(a, b) { return a <= b; }
 
 // ─── Menú de opciones por rol ─────────────────────────────────
+// Nota sobre los items con `labelPorRol`: cuando un mismo path
+// significa cosas distintas según el rol, definimos el label en
+// función del rol. Si no, usamos `label` fijo.
 const MENU_ITEMS = [
   {
     href:        "/generar-qr",
@@ -33,8 +36,18 @@ const MENU_ITEMS = [
   },
   {
     href:        "/leer-qr",
-    label:       "Leer Código QR",
-    description: "Escaneá un QR para registrar asistencia",
+    // Para admins el lector sirve para PROBAR los QR generados,
+    // no para registrar asistencia. Lo dejamos claro en el label.
+    labelPorRol: {
+      alumno:         "Leer Código QR",
+      docente:        "Leer Código QR",
+      administrador:  "Probar QR de Aulas",
+    },
+    descripcionPorRol: {
+      alumno:         "Escaneá un QR para registrar asistencia",
+      docente:        "Escaneá un QR para registrar asistencia",
+      administrador:  "Verificá que los QR de aulas generados funcionen",
+    },
     icon:        "📷",
     variant:     "primary",
     roles:       ["alumno", "docente", "administrador"],
@@ -80,18 +93,20 @@ const MENU_ITEMS = [
     roles:       ["docente", "administrador"],
   },
   {
-    href:        "/admin-qr-espacio",
-    label:       "QR de Aulas",
-    description: "Generá códigos QR permanentes para cada aula",
-    icon:        "📱",
-    variant:     "secondary",
-    roles:       ["administrador"],
-  },
-  {
     href:        "/admin-aulas",
     label:       "Gestión de Aulas",
     description: "Configurá los atributos y equipamiento de cada aula",
     icon:        "🏛️",
+    variant:     "secondary",
+    roles:       ["administrador"],
+  },
+  {
+    // Nota: la URL sigue siendo /admin-espacios por compatibilidad,
+    // pero el usuario ve "Gestión de Eventos" en el menú.
+    href:        "/admin-espacios",
+    label:       "Gestión de Eventos",
+    description: "Reservá aulas para eventos, reuniones o charlas",
+    icon:        "📅",
     variant:     "secondary",
     roles:       ["administrador"],
   },
@@ -366,6 +381,11 @@ function MenuCard({ item, rol }) {
   const isPrimary = item.variant === "primary" &&
     (rol === "alumno" ? true : item.href !== "/leer-qr");
 
+  // Si el item define etiquetas por rol, usamos esas.
+  // Si no, caemos a las genéricas.
+  const labelMostrado = item.labelPorRol?.[rol] ?? item.label;
+  const descripcionMostrada = item.descripcionPorRol?.[rol] ?? item.description;
+
   return (
     <Link
       href={item.href}
@@ -388,10 +408,10 @@ function MenuCard({ item, rol }) {
       </span>
       <div className="flex flex-col gap-0.5">
         <span className={`text-sm font-semibold leading-tight ${isPrimary ? "text-white" : "text-gray-800"}`}>
-          {item.label}
+          {labelMostrado}
         </span>
         <span className={`text-xs leading-snug ${isPrimary ? "text-green-200" : "text-gray-500"}`}>
-          {item.description}
+          {descripcionMostrada}
         </span>
       </div>
     </Link>
