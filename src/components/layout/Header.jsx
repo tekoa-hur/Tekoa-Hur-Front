@@ -9,6 +9,7 @@ export default function Header() {
   const router              = useRouter();
   const { usuario, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const menuRef = useRef(null);
 
   const rolLabel = {
@@ -18,9 +19,35 @@ export default function Header() {
   };
 
   const rolColor = {
-    alumno:        "bg-blue-100 text-blue-800",
-    docente:       "bg-amber-100 text-amber-800",
-    administrador: "bg-emerald-100 text-emerald-800",
+    alumno:        "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
+    docente:       "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+    administrador: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+  };
+
+  // Inicializar estado del Dark Mode leyendo el DOM / LocalStorage
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains("dark") || 
+                   localStorage.getItem("theme") === "dark";
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+      setDarkMode(true);
+    } else {
+      document.documentElement.classList.remove("dark");
+      setDarkMode(false);
+    }
+  }, []);
+
+  // Alternar Modo Oscuro
+  const toggleDarkMode = () => {
+    if (darkMode) {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+      setDarkMode(false);
+    } else {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+      setDarkMode(true);
+    }
   };
 
   useEffect(() => {
@@ -39,7 +66,7 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-green-900 shadow-md">
+    <header className="sticky top-0 z-50 w-full bg-green-900 dark:bg-zinc-950 shadow-md border-b dark:border-zinc-800 transition-colors">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
 
         {/* Logo + Nombre */}
@@ -54,13 +81,29 @@ export default function Header() {
             width={32} height={32}
             className="h-8 w-8 flex-shrink-0 rounded-full bg-white object-contain p-0.5"
           />
-          <span className="text-sm font-semibold text-white sm:text-base">
+        <span
+            className="text-sm font-semibold sm:text-base"
+            style={{ color: "#FFFFFF" }}
+          >
             Tekoá-Hur
           </span>
         </Link>
 
         {/* Derecha */}
         <div className="flex items-center gap-2">
+
+          {/* Selector de modo oscuro */}
+          <button
+            onClick={toggleDarkMode}
+            className="p-2 rounded-lg text-green-100 hover:bg-green-800 dark:text-zinc-400 dark:hover:bg-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-white transition"
+            aria-label={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+          >
+            {darkMode ? (
+              <span className="text-lg">☀️</span>
+            ) : (
+              <span className="text-lg">🌙</span>
+            )}
+          </button>
 
           {usuario ? (
             <>
@@ -74,43 +117,41 @@ export default function Header() {
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen(prev => !prev)}
-                  className="flex items-center gap-1.5 rounded-lg border border-green-700 bg-green-800 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="flex items-center gap-1.5 rounded-lg border border-green-700 bg-green-800 dark:border-zinc-800 dark:bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-green-700 dark:hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   aria-expanded={menuOpen}
                   aria-haspopup="true"
                 >
-                  {/* En mobile muestra inicial + rol emoji, en desktop el nombre */}
                   <span className="sm:hidden">
                     {usuario.rol === "alumno" ? "🎓" : usuario.rol === "docente" ? "👨‍🏫" : "🔑"}
                   </span>
-                  <span className="hidden sm:inline">{usuario.nombre.split(" ")[0]}</span>
+                  <span className="hidden sm:inline" style={{ color: "#FFFFFF" }}>{usuario.nombre.split(" ")[0]}</span>
                   <svg className={`h-3 w-3 flex-shrink-0 transition-transform ${menuOpen ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                    <path fillRule="evenodd"  style={{ color: "#FFFFFF" }} d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
                   </svg>
                 </button>
 
                 {/* Dropdown */}
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
-                    <div className="border-b border-gray-100 px-4 py-3">
-                      <p className="truncate text-sm font-semibold text-gray-800">{usuario.nombre}</p>
-                      <p className="text-xs text-gray-500">DNI: {usuario.dni}</p>
-                      {/* Rol visible en mobile dentro del dropdown */}
+                  <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg transition-colors">
+                    <div className="border-b border-[var(--color-border)] px-4 py-3">
+                      <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{usuario.nombre}</p>
+                      <p className="text-xs text-[var(--color-text-muted)]">DNI: {usuario.dni}</p>
                       <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium sm:hidden ${rolColor[usuario.rol]}`}>
                         {rolLabel[usuario.rol]}
                       </span>
                     </div>
 
                     <Link href="/perfil" onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 transition hover:bg-gray-50">
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-alt)]">
                       <span aria-hidden="true">👤</span> Mi perfil
                     </Link>
                     <Link href="/perfil" onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 transition hover:bg-gray-50">
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-alt)]">
                       <span aria-hidden="true">🔑</span> Cambiar contraseña
                     </Link>
-                    <div className="mt-1 border-t border-gray-100" />
+                    <div className="mt-1 border-t border-[var(--color-border)]" />
                     <button onClick={handleLogout}
-                      className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 transition hover:bg-red-50">
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-950/30">
                       <span aria-hidden="true">🚪</span> Cerrar sesión
                     </button>
                   </div>
@@ -119,7 +160,7 @@ export default function Header() {
             </>
           ) : (
             <Link href="/login"
-              className="rounded border border-green-700 bg-green-800 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-green-700">
+              className="rounded border border-green-700 bg-green-800 dark:border-zinc-800 dark:bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-green-700 dark:hover:bg-zinc-800">
               Ingresar
             </Link>
           )}

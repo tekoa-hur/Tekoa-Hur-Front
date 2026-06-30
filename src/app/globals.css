@@ -17,7 +17,7 @@
   --color-primary-light:    #E8F5E9;   /* fondos sutiles, íconos de cards */
   --color-primary-ring:     #A5D6A7;   /* focus ring en inputs */
 
-  /* ── Semánticos (rojo=error/ausente, verde=éxito/presente, amarillo=alerta) ── */
+  /* ── Semánticos (rojo=error, verde=éxito, amarillo=alerta) ── */
   --color-success:          #16A34A;
   --color-success-bg:       #DCFCE7;
   --color-error:            #DC2626;
@@ -32,10 +32,15 @@
   --color-text-secondary:   #4B5563;
   --color-text-muted:       #9CA3AF;
   --color-border:           #D1D5DB;
-  --color-border-focus:     #1B5E20;   /* ✅ verde en foco, antes era azul #2563eb */
+  --color-border-focus:     #1B5E20;   
   --color-surface:          #FFFFFF;
   --color-surface-alt:      #F9FAFB;
   --color-page-bg:          #F3F4F6;
+
+  /* ── Colores Estables Absolutos (Inmunes al Modo Oscuro) ── */
+  --color-fixed-white:      #ffffff;
+  --color-fixed-dark:       #111827;
+  --color-fixed-muted:      #4B5563;
 
   /* ── Espaciado base (múltiplos de 8px — regla 2.a) ── */
   --space-1: 4px;
@@ -59,12 +64,70 @@
   --shadow-lg:  0 4px 20px rgba(0, 0, 0, 0.10);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   MODO OSCURO (Dark Mode Override)
+   ═══════════════════════════════════════════════════════════════ */
+:root.dark {
+  --background: #121212;
+  --foreground: #F3F4F6;
+
+  /* Verde institucional adaptado para modo oscuro (más brillante para accesibilidad) */
+  --color-primary:          #4CAF50;   
+  --color-primary-hover:    #81C784;   
+  --color-primary-light:    #1B3820;   /* Fondo verde muy oscuro */
+  --color-primary-ring:     #2E7D32;   
+
+  /* Semánticos en modo oscuro */
+  --color-success:          #4ADE80;
+  --color-success-bg:       #14532D;
+  --color-error:            #F87171;
+  --color-error-bg:         #7F1D1D;
+  --color-warning:          #FBBF24;
+  --color-warning-bg:       #78350F;
+  --color-info:             #60A5FA;
+  --color-info-bg:          #1E3A8A;
+
+  /* Grises neutros adaptados a fondo oscuro */
+  --color-text-primary:     #F9FAFB;   
+  --color-text-secondary:   #E5E7EB;
+  --color-text-muted:       #9CA3AF;
+  --color-border:           #374151;   
+  --color-border-focus:     #4CAF50;   
+  --color-surface:          #1E1E1E;   /* Tarjetas, contenedores y dropdowns */
+  --color-surface-alt:      #262626;
+  --color-page-bg:          #121212;   /* Fondo general de la aplicación */
+
+  /* Ajuste de sombras para superficies oscuras */
+  --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg:  0 8px 28px rgba(0, 0, 0, 0.5);
+}
+
 /* ── Next.js / Tailwind theme bridge ── */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* ⚡ Mapeo global: Vincula las clases nativas de Tailwind a tus variables dinámicas */
+  --color-white: var(--color-surface);
+  --color-gray-50: var(--color-surface-alt);
+  --color-gray-100: var(--color-page-bg);
+  --color-gray-200: var(--color-border);
+  --color-gray-500: var(--color-text-muted);
+  --color-gray-600: var(--color-text-secondary);
+  --color-gray-700: var(--color-text-secondary);
+  --color-gray-800: var(--color-text-primary);
+  --color-gray-900: var(--color-text-primary);
+  
+  /* Clases estables para el lector QR y componentes fijos claro */
+  --color-fixed-white: var(--color-fixed-white);
+  --color-fixed-dark: var(--color-fixed-dark);
+  --color-fixed-muted: var(--color-fixed-muted);
+
+  /* Fuerza a Tailwind v4 a usar la clase .dark manual */
+  --variant-dark: (.dark &);
 }
 
 /* ══════════════════════════════════════════════════
@@ -81,11 +144,11 @@ body {
   font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* ══════════════════════════════════════════════════
    LAYOUT HELPERS
-   Usadas por asistencia-docente y otros con .page-container
    ══════════════════════════════════════════════════ */
 .page-container {
   max-width: 1200px;
@@ -102,17 +165,18 @@ body {
 
 /* ══════════════════════════════════════════════════
    FILTROS DE ASISTENCIA
-   Usados por .asistencia-filtro en asistencia-docente
    ══════════════════════════════════════════════════ */
 .asistencia-filtros {
   display: flex;
   gap: var(--space-4);
   flex-wrap: wrap;
   background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   box-shadow: var(--shadow-md);
   margin-bottom: var(--space-6);
+  transition: background-color 0.2s, border-color 0.2s;
 }
 
 .asistencia-filtro {
@@ -137,13 +201,12 @@ body {
   background-color: var(--color-surface);
   color: var(--color-text-primary);
   font-size: 14px;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
   cursor: pointer;
 }
 
 .asistencia-filtro select:focus {
   outline: none;
-  /* ✅ Verde institucional — antes era azul #2563eb */
   border-color: var(--color-border-focus);
   box-shadow: 0 0 0 3px var(--color-primary-ring);
 }
@@ -160,6 +223,7 @@ body {
    ══════════════════════════════════════════════════ */
 .asistencia-placeholder {
   background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   box-shadow: var(--shadow-md);
@@ -181,8 +245,7 @@ body {
 }
 
 /* ══════════════════════════════════════════════════
-   INPUTS GLOBALES — aplica a cualquier input/select
-   fuera de Tailwind (ej: componentes MUI custom)
+   INPUTS GLOBALES ── Fuera de Tailwind
    ══════════════════════════════════════════════════ */
 input:focus-visible,
 select:focus-visible,
@@ -207,4 +270,15 @@ textarea:focus-visible {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
+}
+.lector-qr-page h1 {
+  color: #111827 !important; /* Fuerza el color oscuro del modo claro */
+}
+
+.lector-qr-page p {
+  color: #4B5563 !important; /* Fuerza el color secundario del modo claro */
+}
+
+.lector-qr-page .bg-white {
+  background-color: #ffffff !important; /* Fuerza el fondo blanco puro */
 }
