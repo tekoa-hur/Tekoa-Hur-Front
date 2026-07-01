@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { BACK_URL, getAuthHeaders } from "@/config/api";
 
 // ─── Días en español sin tilde (igual que el backend) ────────
-const DIAS = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+const DIAS = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
 
 function diaActual() {
   return DIAS[new Date().getDay()];
@@ -15,7 +15,7 @@ function diaActual() {
 
 function horaActual() {
   const now = new Date();
-  return `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
 /** Compara dos strings "HH:MM" */
@@ -27,110 +27,118 @@ function horaMenorIgual(a, b) { return a <= b; }
 // función del rol. Si no, usamos `label` fijo.
 const MENU_ITEMS = [
   {
-    href:        "/generar-qr",
-    label:       "Generar QR del Aula",
+    href: "/generar-qr",
+    label: "Generar QR del Aula",
     description: "Creá un código QR para identificar un aula",
-    icon:        "🏛️",
-    variant:     "primary",
-    roles:       ["docente", "administrador"],
+    icon: "🏛️",
+    variant: "primary",
+    roles: ["docente", "administrador"],
   },
   {
-    href:        "/leer-qr",
+    href: "/leer-qr",
     // Para admins el lector sirve para PROBAR los QR generados,
     // no para registrar asistencia. Lo dejamos claro en el label.
     labelPorRol: {
-      alumno:         "Leer Código QR",
-      docente:        "Leer Código QR",
-      administrador:  "Probar QR de Aulas",
+      alumno: "Leer Código QR",
+      docente: "Leer Código QR",
+      administrador: "Probar QR de Aulas",
     },
     descripcionPorRol: {
-      alumno:         "Escaneá un QR para registrar asistencia",
-      docente:        "Escaneá un QR para registrar asistencia",
-      administrador:  "Verificá que los QR de aulas generados funcionen",
+      alumno: "Escaneá un QR para registrar asistencia",
+      docente: "Escaneá un QR para registrar asistencia",
+      administrador: "Verificá que los QR de aulas generados funcionen",
     },
-    icon:        "📷",
-    variant:     "primary",
-    roles:       ["alumno", "docente", "administrador"],
+    icon: "📷",
+    variant: "primary",
+    roles: ["alumno", "docente", "administrador"],
   },
   {
-    href:        "/mis-asistencias",
-    label:       "Mis Asistencias",
+    href: "/mis-asistencias",
+    label: "Mis Asistencias",
     description: "Consultá tu historial de asistencia por materia",
-    icon:        "📋",
-    variant:     "secondary",
-    roles:       ["alumno"],
+    icon: "📋",
+    variant: "secondary",
+    roles: ["alumno"],
   },
   {
-    href:        "/mis-asistencias-docente",
-    label:       "Mi Asistencia",
+    href: "/mis-asistencias-docente",
+    label: "Mi Asistencia",
     description: "Consultá tu propio historial de asistencia como docente",
-    icon:        "📋",
-    variant:     "secondary",
-    roles:       ["docente"],
+    icon: "📋",
+    variant: "secondary",
+    roles: ["docente"],
   },
   {
-    href:        "/asistencia",
-    label:       "Listado de Asistencia",
+    href: "/asistencia",
+    label: "Listado de Asistencia",
     description: "Consultá el historial de asistencias por comisión",
-    icon:        "📊",
-    variant:     "secondary",
-    roles:       ["docente", "administrador"],
+    icon: "📊",
+    variant: "secondary",
+    roles: ["docente", "administrador"],
   },
   {
-    href:        "/importar",
-    label:       "Cargar Planilla",
+    href: "/importar",
+    label: "Cargar Planilla",
     description: "Importá el archivo Excel con comisiones y alumnos",
-    icon:        "📁",
-    variant:     "secondary",
-    roles:       ["administrador"],
+    icon: "📁",
+    variant: "secondary",
+    roles: ["administrador"],
   },
   {
-    href:        "/prueba-conexion",
-    label:       "Listado de Estudiantes",
+    href: "/historial-importaciones",
+    label: "Historial de Importaciones",
+    description: "Consultá las importaciones realizadas y descargá los archivos originales",
+    icon: "📋",
+    variant: "secondary",
+    roles: ["administrador"],
+  },
+  {
+    href: "/prueba-conexion",
+    label: "Listado de Estudiantes",
     description: "Visualizá el padrón de estudiantes registrados",
-    icon:        "👥",
-    variant:     "secondary",
-    roles:       ["docente", "administrador"],
+    icon: "👥",
+    variant: "secondary",
+    roles: ["docente", "administrador"],
   },
   {
-    href:        "/admin-aulas",
-    label:       "Gestión de Aulas",
+    href: "/admin-aulas",
+    label: "Gestión de Aulas",
     description: "Configurá los atributos y equipamiento de cada aula",
-    icon:        "🏛️",
-    variant:     "secondary",
-    roles:       ["administrador"],
+    icon: "🏛️",
+    variant: "secondary",
+    roles: ["administrador"],
   },
   {
     // Nota: la URL sigue siendo /admin-espacios por compatibilidad,
     // pero el usuario ve "Gestión de Eventos" en el menú.
-    href:        "/admin-espacios",
-    label:       "Gestión de Eventos",
+    href: "/admin-espacios",
+    label: "Gestión de Eventos",
     description: "Reservá aulas para eventos, reuniones o charlas",
-    icon:        "📅",
-    variant:     "secondary",
-    roles:       ["administrador"],
+    icon: "📅",
+    variant: "secondary",
+    roles: ["administrador"],
   },
   {
-    href:        "/admin-usuarios",
-    label:       "Gestión de Usuarios",
+    href: "/admin-usuarios",
+    label: "Gestión de Usuarios",
     description: "Administrá los accesos y roles del sistema",
-    icon:        "🔑",
-    variant:     "secondary",
-    roles:       ["administrador"],
+    icon: "🔑",
+    variant: "secondary",
+    roles: ["administrador"],
   },
 ];
 
 export default function HomePage() {
-  const router               = useRouter();
+  const router = useRouter();
   const { usuario, loading } = useAuth();
-  const headers              = useMemo(() => ({ Accept: "application/json", ...getAuthHeaders() }), []);
+  const headers = useMemo(() => ({ Accept: "application/json", ...getAuthHeaders() }), []);
 
   // ── Estado para el aviso de clase activa del docente ─────────
-  const [clasesActivas,    setClasesActivas]    = useState([]); // [{comision, horario}]
-  const [registrando,      setRegistrando]      = useState(false);
-  const [msgPresente,      setMsgPresente]      = useState(""); // éxito o error del registro
-  const [yaRegistrado,     setYaRegistrado]     = useState({}); // {comisionId: true}
-  const [descartado,       setDescartado]       = useState(false); // el docente cerró el aviso
+  const [clasesActivas, setClasesActivas] = useState([]); // [{comision, horario}]
+  const [registrando, setRegistrando] = useState(false);
+  const [msgPresente, setMsgPresente] = useState(""); // éxito o error del registro
+  const [yaRegistrado, setYaRegistrado] = useState({}); // {comisionId: true}
+  const [descartado, setDescartado] = useState(false); // el docente cerró el aviso
 
   useEffect(() => {
     if (!loading && !usuario) router.push("/login");
@@ -151,8 +159,8 @@ export default function HomePage() {
         if (!profesor) return;
 
         // 2. Obtener sus comisiones con horarios
-        const resCom  = await fetch(`${BACK_URL}/api/comisiones`, { headers });
-        const comList  = await resCom.json();
+        const resCom = await fetch(`${BACK_URL}/api/comisiones`, { headers });
+        const comList = await resCom.json();
         const misComisiones = Array.isArray(comList)
           ? comList.filter(c => String(c.profesorId) === String(profesor.profesorId))
           : [];
@@ -160,7 +168,7 @@ export default function HomePage() {
         if (misComisiones.length === 0) return;
 
         // 3. Verificar cuáles tienen horario activo AHORA
-        const dia  = diaActual();
+        const dia = diaActual();
         const hora = horaActual();
 
         const activas = [];
@@ -172,12 +180,12 @@ export default function HomePage() {
 
             if (
               diaHorario === dia &&
-              horaMenorIgual(h.horaDesde?.slice(0,5), hora) &&
-              horaMenorIgual(hora, h.horaHasta?.slice(0,5))
+              horaMenorIgual(h.horaDesde?.slice(0, 5), hora) &&
+              horaMenorIgual(hora, h.horaHasta?.slice(0, 5))
             ) {
               activas.push({
                 comision: com,
-                horario:  h,
+                horario: h,
               });
             }
           }
@@ -199,8 +207,8 @@ export default function HomePage() {
             const regs = await rAsis.json();
             const yaRegHoy = regs.some(
               r => String(r.usuarioId) === String(usuario.dni) &&
-                   r.tipoUsuario === "PROFESOR" &&
-                   r.fecha === hoy
+                r.tipoUsuario === "PROFESOR" &&
+                r.fecha === hoy
             );
             if (yaRegHoy) yaRegistradoHoy[comId] = true;
           }
@@ -227,10 +235,10 @@ export default function HomePage() {
     setMsgPresente("");
     try {
       const token = localStorage.getItem("tekoa_token");
-      const res   = await fetch(`${BACK_URL}/api/asistencias/docente-presente`, {
-        method:  "POST",
+      const res = await fetch(`${BACK_URL}/api/asistencias/docente-presente`, {
+        method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body:    JSON.stringify({ comisionId }),
+        body: JSON.stringify({ comisionId }),
       });
       const data = await res.json();
 
@@ -261,12 +269,12 @@ export default function HomePage() {
   if (!usuario) return null;
 
   const itemsVisibles = MENU_ITEMS.filter(item => item.roles.includes(usuario.rol));
-  const pares    = itemsVisibles.length % 2 !== 0 ? itemsVisibles.slice(0, -1) : itemsVisibles;
+  const pares = itemsVisibles.length % 2 !== 0 ? itemsVisibles.slice(0, -1) : itemsVisibles;
   const huerfano = itemsVisibles.length % 2 !== 0 ? [itemsVisibles[itemsVisibles.length - 1]] : [];
 
   // ¿Hay clases activas que todavía no confirmó ni descartó?
   const clasesParaMostrar = clasesActivas.filter(c => !yaRegistrado[c.comision.comisionId]);
-  const mostrarAviso      = usuario.rol === "docente" && clasesParaMostrar.length > 0 && !descartado;
+  const mostrarAviso = usuario.rol === "docente" && clasesParaMostrar.length > 0 && !descartado;
 
   return (
     <div className="flex flex-1 flex-col items-center justify-start px-4 py-8 sm:px-6 sm:py-12">
@@ -305,11 +313,11 @@ export default function HomePage() {
             {/* Una tarjeta por cada clase activa */}
             <div className="divide-y divide-green-200">
               {clasesParaMostrar.map(({ comision, horario }) => {
-                const comId     = comision.comisionId;
+                const comId = comision.comisionId;
                 const registrado = yaRegistrado[comId];
-                const materia   = comision.materia?.nombre ?? comision.cod_comision;
-                const desde     = horario.horaDesde?.slice(0,5) ?? "";
-                const hasta     = horario.horaHasta?.slice(0,5) ?? "";
+                const materia = comision.materia?.nombre ?? comision.cod_comision;
+                const desde = horario.horaDesde?.slice(0, 5) ?? "";
+                const hasta = horario.horaHasta?.slice(0, 5) ?? "";
 
                 return (
                   <div key={comId} className="px-5 py-4">
@@ -348,11 +356,10 @@ export default function HomePage() {
 
             {/* Mensaje resultado */}
             {msgPresente && (
-              <div className={`px-5 py-3 text-sm font-medium border-t border-green-200 ${
-                msgPresente.startsWith("✅")
+              <div className={`px-5 py-3 text-sm font-medium border-t border-green-200 ${msgPresente.startsWith("✅")
                   ? "text-green-800 bg-green-100"
                   : "text-red-700 bg-red-50"
-              }`}>
+                }`}>
                 {msgPresente}
               </div>
             )}
@@ -399,9 +406,8 @@ function MenuCard({ item, rol }) {
       `}
     >
       <span
-        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl ${
-          isPrimary ? "bg-green-700" : "bg-green-50"
-        }`}
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl ${isPrimary ? "bg-green-700" : "bg-green-50"
+          }`}
         aria-hidden="true"
       >
         {item.icon}

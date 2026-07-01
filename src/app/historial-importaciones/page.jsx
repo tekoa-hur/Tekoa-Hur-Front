@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { listarHistorialImportaciones } from "@/utils/historialImportacionApi";
+import { listarHistorialImportaciones, descargarArchivoImportacion } from "@/utils/historialImportacionApi";
 
 /**
  * Permite consultar todas las importaciones realizadas desde el sistema.
@@ -21,9 +21,7 @@ export default function HistorialImportacionesPage() {
  * Convierte el tipo de operación a un texto más amigable para el usuario.
  */
 function obtenerTipoOperacion(tipoOperacion) {
-
     switch (tipoOperacion) {
-
         case "CARGA_INICIAL":
             return "Carga inicial";
         case "ACTUALIZACION":
@@ -37,7 +35,6 @@ function obtenerTipoOperacion(tipoOperacion) {
  * Convierte el estado almacenado en la base a un texto más legible.
  */
 function obtenerEstado(estado) {
-
     switch (estado) {
         case "EXITOSA":
             return "Exitosa";
@@ -48,27 +45,19 @@ function obtenerEstado(estado) {
     }
 }
 
-
 /**
  * Contenido principal de la pantalla.
  */
 function HistorialImportacionesContenido() {
-
-    /**
-     * Historial obtenido desde el backend.
-     */
+    /** Historial obtenido desde el backend. */
     const [historialImportaciones, setHistorialImportaciones] = useState([]);
     /**
-     * Indica si la información todavía
-     * se encuentra cargando.
+     * Indica si la información todavía se encuentra cargando.
      */
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState("");
 
-
-    /**
- * Importación seleccionada para visualizar su detalle.
- */
+    /**Importación seleccionada para visualizar su detalle. */
     const [importacionSeleccionada, setImportacionSeleccionada] = useState(null);
     /**Controla la apertura del modal. */
     const [mostrarDetalle, setMostrarDetalle] = useState(false);
@@ -77,7 +66,6 @@ function HistorialImportacionesContenido() {
      * Al ingresar a la pantalla se consulta el historial de importaciones.
      */
     useEffect(() => {
-
         async function cargarHistorial() {
             try {
                 const historial =
@@ -93,6 +81,33 @@ function HistorialImportacionesContenido() {
         cargarHistorial();
     }, []);
 
+    /** Descarga el archivo Excel asociado a la importación seleccionada. */
+    async function descargarArchivo() {
+        try {
+            // Solicita el archivo al backend.
+            const archivo =
+                await descargarArchivoImportacion(
+                    importacionSeleccionada.historialId
+                );
+
+            // Crear una URL temporal para el archivo.
+            const url = window.URL.createObjectURL(archivo);
+
+            // Crear un enlace invisible para iniciar la descarga.
+            const enlace = document.createElement("a");
+            enlace.href = url;
+            enlace.download =
+                importacionSeleccionada.nombreArchivo;
+            document.body.appendChild(enlace);
+            enlace.click();
+            enlace.remove();
+            // Liberar la memoria utilizada por la URL temporal.
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error(error);
+            alert("No fue posible descargar el archivo.");
+        }
+    }
 
     return (
         <main className="mx-auto w-full max-w-7xl px-4 py-6">
@@ -237,7 +252,7 @@ function HistorialImportacionesContenido() {
                 </div>
             )}
 
-{/* ======================================================
+            {/* ======================================================
     Modal de detalle de la importación
 ====================================================== */}
 
@@ -344,13 +359,21 @@ function HistorialImportacionesContenido() {
                             }
 
                             {/* Pie */}
-                            <div className="mt-8 flex justify-end">
+                            <div className="mt-8 flex justify-end gap-3">
+                                <button
+                                    onClick={descargarArchivo}
+                                    className="rounded-lg border border-green-700 px-4 py-2 text-green-700 transition hover:bg-green-50"
+                                >
+                                    Descargar archivo
+                                </button>
+
                                 <button
                                     onClick={() => {
                                         setMostrarDetalle(false);
                                         setImportacionSeleccionada(null);
                                     }}
-                                    className="rounded-lg bg-green-700 px-4 py-2 text-white hover:bg-green-800"
+
+                                    className="rounded-lg bg-green-700 px-4 py-2 text-white transition hover:bg-green-800"
                                 >
                                     Cerrar
                                 </button>
