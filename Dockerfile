@@ -5,11 +5,27 @@ FROM node:22-bookworm AS builder
 
 WORKDIR /app
 
+# Variables que Dokploy enviará durante el build
+ARG NEXT_PUBLIC_BACK_URL
+ARG NEXT_PUBLIC_FRONT_URL
+ARG NEXT_PUBLIC_BASIC_USER
+ARG NEXT_PUBLIC_BASIC_PASS
+
+# Las convertimos en variables de entorno para Next.js
+ENV NEXT_PUBLIC_BACK_URL=$NEXT_PUBLIC_BACK_URL
+ENV NEXT_PUBLIC_FRONT_URL=$NEXT_PUBLIC_FRONT_URL
+ENV NEXT_PUBLIC_BASIC_USER=$NEXT_PUBLIC_BASIC_USER
+ENV NEXT_PUBLIC_BASIC_PASS=$NEXT_PUBLIC_BASIC_PASS
+
 COPY package*.json ./
 
 RUN npm install
 
 COPY . .
+
+# (Opcional, para verificar en los logs del build)
+RUN echo "NEXT_PUBLIC_BACK_URL=$NEXT_PUBLIC_BACK_URL"
+RUN echo "NEXT_PUBLIC_FRONT_URL=$NEXT_PUBLIC_FRONT_URL"
 
 RUN npm run build
 
