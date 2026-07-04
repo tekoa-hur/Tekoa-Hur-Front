@@ -4,10 +4,17 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext(null);
 
+//Console para deployer: mostramos las variables de entorno que
+console.log("Variables de entorno:", {
+  NEXT_PUBLIC_BACK_URL: process.env.NEXT_PUBLIC_BACK_URL,
+  NEXT_PUBLIC_FRONT_URL: process.env.NEXT_PUBLIC_FRONT_URL,
+});
+// Fin del console
+
 // Claves de localStorage. Las exportamos como constantes para
 // poder cambiarlas en un solo lugar y evitar typos silenciosos.
 const TOKEN_KEY = "tekoa_token";
-const USER_KEY  = "tekoa_user";
+const USER_KEY = "tekoa_user";
 
 /**
  * AuthProvider — Envuelve toda la app y provee el estado de autenticación.
@@ -30,7 +37,7 @@ const USER_KEY  = "tekoa_user";
  */
 export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(null);
-  const [token,   setToken]   = useState(null);
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Al montar el árbol React (solo en cliente), recuperamos
@@ -39,7 +46,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     try {
       const savedToken = localStorage.getItem(TOKEN_KEY);
-      const savedUser  = localStorage.getItem(USER_KEY);
+      const savedUser = localStorage.getItem(USER_KEY);
       if (savedToken && savedUser) {
         setToken(savedToken);
         setUsuario(JSON.parse(savedUser));
@@ -65,12 +72,19 @@ export function AuthProvider({ children }) {
    */
   async function login(dni, password) {
     try {
+      /**Console para deployer */
+      console.log("NEXT_PUBLIC_BACK_URL =", process.env.NEXT_PUBLIC_BACK_URL);
+
+      const url = `${process.env.NEXT_PUBLIC_BACK_URL}/api/auth/login`;
+
+      console.log("LOGIN URL =", url);
+      /** Terminna el console*/
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BACK_URL}/api/auth/login`,
         {
-          method:  "POST",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ dni: String(dni).trim(), password }),
+          body: JSON.stringify({ dni: String(dni).trim(), password }),
         }
       );
 
@@ -108,21 +122,21 @@ export function AuthProvider({ children }) {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BACK_URL}/api/auth/forgot-password`,
         {
-          method:  "POST",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ email: String(email).trim() }),
+          body: JSON.stringify({ email: String(email).trim() }),
         }
       );
 
       const data = await res.json();
 
       return {
-        ok:      res.ok,
+        ok: res.ok,
         message: data.message,
       };
     } catch {
       return {
-        ok:      false,
+        ok: false,
         message: "No se pudo conectar con el servidor.",
       };
     }
@@ -141,24 +155,24 @@ export function AuthProvider({ children }) {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BACK_URL}/api/auth/validate-reset-token`,
         {
-          method:  "POST",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ email, token }),
+          body: JSON.stringify({ email, token }),
         }
       );
 
       const data = await res.json();
 
       return {
-        ok:      res.ok,
-        valid:   data.valid === true,
+        ok: res.ok,
+        valid: data.valid === true,
         message: data.message,
-        nombre:  data.nombre,
+        nombre: data.nombre,
       };
     } catch {
       return {
-        ok:      false,
-        valid:   false,
+        ok: false,
+        valid: false,
         message: "No se pudo conectar con el servidor.",
       };
     }
@@ -176,22 +190,22 @@ export function AuthProvider({ children }) {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BACK_URL}/api/auth/reset-password`,
         {
-          method:  "POST",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ email, token, password }),
+          body: JSON.stringify({ email, token, password }),
         }
       );
 
       const data = await res.json();
 
       return {
-        ok:      res.ok,
+        ok: res.ok,
         message: data.message,
-        errors:  data.errors, // array opcional con detalles de política
+        errors: data.errors, // array opcional con detalles de política
       };
     } catch {
       return {
-        ok:      false,
+        ok: false,
         message: "No se pudo conectar con el servidor.",
       };
     }
