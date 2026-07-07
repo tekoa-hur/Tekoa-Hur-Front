@@ -335,6 +335,7 @@ function HistorialImportacionesContenido() {
                             </div>
 
                             {/* Errores */}
+
                             <h3 className="mt-6 mb-3 text-lg font-semibold text-red-700">
                                 Errores
                             </h3>
@@ -344,20 +345,29 @@ function HistorialImportacionesContenido() {
                                         No se registraron errores durante la importación.
                                     </p>
                                 ) : (
-                                    <ul className="list-disc pl-5 text-sm text-red-700">
-                                        {
-                                            importacionSeleccionada.detalle.errores.map(
-                                                (error, indice) => (
-                                                    <li key={indice}>
-                                                        {error}
+
+                                    <div className="max-h-40 overflow-y-auto rounded-md border border-gray-200 p-3">
+                                        <ul className="list-disc pl-5 space-y-1 text-sm">
+                                            {
+                                                importacionSeleccionada.detalle.errores.map((error) => (
+                                                    <li
+                                                        key={`${error.fila}-${error.dni}`}
+                                                        className="text-red-700"
+                                                    >
+                                                        <strong>Fila {error.fila}</strong>
+                                                        {" | DNI: "}
+                                                        {error.dni}
+                                                        {" | Comisión: "}
+                                                        {error.comision}
+                                                        {" | "}
+                                                        {error.mensaje}
                                                     </li>
-                                                )
-                                            )
-                                        }
-                                    </ul>
+                                                ))
+                                            }
+                                        </ul>
+                                    </div>
                                 )
                             }
-
                             {/* Pie */}
                             <div className="mt-8 flex justify-end gap-3">
                                 <button
