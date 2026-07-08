@@ -313,26 +313,66 @@ function HistorialImportacionesContenido() {
                             <h3 className="mb-3 text-lg font-semibold text-green-800">
                                 Resultado de la importación
                             </h3>
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                                <p>Edificios:</p>
-                                <p>{importacionSeleccionada.detalle.edificios}</p>
-                                <p>Aulas:</p>
-                                <p>{importacionSeleccionada.detalle.aulas}</p>
-                                <p>Profesores:</p>
-                                <p>{importacionSeleccionada.detalle.profesores}</p>
-                                <p>Materias:</p>
-                                <p>{importacionSeleccionada.detalle.materias}</p>
-                                <p>Comisiones:</p>
-                                <p>{importacionSeleccionada.detalle.comisiones}</p>
-                                <p>Horarios:</p>
-                                <p>{importacionSeleccionada.detalle.horarios}</p>
-                                <p>Estudiantes:</p>
-                                <p>{importacionSeleccionada.detalle.estudiantes}</p>
-                                <p>Matrículas:</p>
-                                <p>{importacionSeleccionada.detalle.matriculas}</p>
-                                <p>Usuarios creados:</p>
-                                <p>{importacionSeleccionada.detalle.usuariosCreados}</p>
-                            </div>
+
+                            {importacionSeleccionada.origen === "AULAS" ? (
+                                // ─── Detalle específico de importación de AULAS ───
+                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                    <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-center">
+                                        <p className="text-2xl font-bold text-green-800">
+                                            {importacionSeleccionada.detalle?.creadas ?? 0}
+                                        </p>
+                                        <p className="mt-1 text-xs font-medium text-green-700">
+                                            Creadas
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-center">
+                                        <p className="text-2xl font-bold text-blue-800">
+                                            {importacionSeleccionada.detalle?.actualizadas ?? 0}
+                                        </p>
+                                        <p className="mt-1 text-xs font-medium text-blue-700">
+                                            Actualizadas
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-center">
+                                        <p className="text-2xl font-bold text-gray-600">
+                                            {importacionSeleccionada.detalle?.ignoradas ?? 0}
+                                        </p>
+                                        <p className="mt-1 text-xs font-medium text-gray-600">
+                                            Ignoradas
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-center">
+                                        <p className="text-2xl font-bold text-red-800">
+                                            {importacionSeleccionada.detalle?.errores?.length ?? 0}
+                                        </p>
+                                        <p className="mt-1 text-xs font-medium text-red-700">
+                                            Errores
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                // ─── Detalle clásico (comisiones / alumnos) ───
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <p>Edificios:</p>
+                                    <p>{importacionSeleccionada.detalle.edificios}</p>
+                                    <p>Aulas:</p>
+                                    <p>{importacionSeleccionada.detalle.aulas}</p>
+                                    <p>Profesores:</p>
+                                    <p>{importacionSeleccionada.detalle.profesores}</p>
+                                    <p>Materias:</p>
+                                    <p>{importacionSeleccionada.detalle.materias}</p>
+                                    <p>Comisiones:</p>
+                                    <p>{importacionSeleccionada.detalle.comisiones}</p>
+                                    <p>Horarios:</p>
+                                    <p>{importacionSeleccionada.detalle.horarios}</p>
+                                    <p>Estudiantes:</p>
+                                    <p>{importacionSeleccionada.detalle.estudiantes}</p>
+                                    <p>Matrículas:</p>
+                                    <p>{importacionSeleccionada.detalle.matriculas}</p>
+                                    <p>Usuarios creados:</p>
+                                    <p>{importacionSeleccionada.detalle.usuariosCreados}</p>
+                                </div>
+                            )}
 
                             {/* Errores */}
 
@@ -344,6 +384,34 @@ function HistorialImportacionesContenido() {
                                     <p className="text-sm text-green-700">
                                         No se registraron errores durante la importación.
                                     </p>
+                                ) : importacionSeleccionada.origen === "AULAS" ? (
+                                    // ─── Errores de AULAS: tabla con fila + motivo ───
+                                    <div className="max-h-64 overflow-y-auto rounded-md border border-gray-200">
+                                        <table className="w-full text-sm">
+                                            <thead className="sticky top-0 bg-gray-50">
+                                                <tr>
+                                                    <th className="px-3 py-2 text-left font-semibold text-gray-600 w-20">
+                                                        Fila
+                                                    </th>
+                                                    <th className="px-3 py-2 text-left font-semibold text-gray-600">
+                                                        Motivo
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {importacionSeleccionada.detalle.errores.map((err, i) => (
+                                                    <tr key={i}>
+                                                        <td className="px-3 py-2 font-mono text-gray-500">
+                                                            {err.fila}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-gray-700">
+                                                            {err.motivo}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 ) : (
 
                                     <div className="max-h-40 overflow-y-auto rounded-md border border-gray-200 p-3">
