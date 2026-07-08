@@ -6,7 +6,6 @@ import { useMemo } from "react";
  * AsistenciaGrid — Sin MUI, 100% Tailwind.
  * Muestra la grilla de asistencia con P/A por fecha.
  * En mobile: scroll horizontal sobre la tabla.
- * Misma interfaz de props que antes — sin cambios en la lógica.
  */
 export default function AsistenciaGrid({
   fechas = [],
@@ -31,7 +30,7 @@ export default function AsistenciaGrid({
     return map;
   }, [asistencias]);
 
-  //Crear mapa de eventos
+  // Crear mapa de eventos
   const feriadosMap = useMemo(() => {
     const map = new Map();
 
@@ -51,8 +50,6 @@ export default function AsistenciaGrid({
         id: alumno.id,
         nombre: alumno.apellido,
         dni: alumno.dni ?? alumno.id,
-        // Guardamos si existe asistencia para ese alumno en esa fecha.
-        // Todavía NO decidimos si es P o A.
         fechas: fechasOrdenadas.map(f => ({
           fecha: f,
           estado: asistenciaMap.get(
@@ -116,7 +113,6 @@ export default function AsistenciaGrid({
                 {mostrarDni && (
                   <td className="px-4 py-3 font-mono text-xs text-gray-500">{fila.dni}</td>
                 )}
-                {/* Mapeo las fechas para mostrar P/A o Feriados, con estilos según el caso */}
                 {fila.fechas.map(({ fecha, estado }) => {
                   const evento = feriadosMap.get(fecha);
 
@@ -127,36 +123,43 @@ export default function AsistenciaGrid({
                   // Presente
                   if (estado === "PRESENTE") {
                     texto = "P";
-                    estilos = "bg-green-100 text-green-700";
+                    stilos = "bg-green-100 text-green-700";
                   }
 
-                  // Ausente (manual o automático)
+                  // Ausente
                   if (estado === "AUSENTE") {
                     texto = "A";
                     estilos = "bg-red-100 text-red-600";
                   }
 
                   if (evento) {
-                    switch (evento.tipo) {
+                    // Normalizamos a minúsculas y quitamos acentos para evitar fallos de coincidencia string
+                    const tipoNormalizado = String(evento.tipo ?? "")
+                      .normalize("NFD")
+                      .replace(/[\u0300-\u036f]/g, "")
+                      .toLowerCase()
+                      .trim();
 
-                      case "Cancelación de clase":
+                    switch (tipoNormalizado) {
+                      case "cancelacion de clase":
                         texto = "F";
                         estilos = "bg-yellow-100 text-yellow-700";
                         break;
 
-                      case "Día no laborable":
+                      case "dia no laborable":
                         texto = "NL";
                         estilos = "bg-blue-100 text-blue-700";
                         break;
 
-                      case "Paro docente":
+                      case "paro docente":
                         texto = "PD";
                         estilos = "bg-orange-100 text-orange-700";
                         break;
 
                       default:
-                        texto = "E";
-                        estilos = "bg-gray-100 text-gray-700";
+                        // Si no machea los anteriores pero es un día sin clases válido, intentamos usar las iniciales
+                        texto = tipoNormalizado.includes("paro") ? "PD" : tipoNormalizado.includes("laborable") ? "NL" : "E";
+                        estilos = texto === "PD" ? "bg-orange-100 text-orange-700" : texto === "NL" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700";
                     }
                   }
 
@@ -178,15 +181,13 @@ export default function AsistenciaGrid({
       </div>
 
       {/* Leyenda */}
-      <div className="border-t border-gray-100 px-5 py-3 flex gap-4 text-xs text-gray-400">
+      <div className="border-t border-gray-100 px-5 py-3 flex gap-4 text-xs text-gray-400 flex-wrap">
         <span className="flex items-center gap-1">
           <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-xs font-bold text-green-700">P</span>
           Presente
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-500">
-            -
-          </span>
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-500">-</span>
           Pendiente
         </span>
         <span className="flex items-center gap-1">
@@ -195,7 +196,7 @@ export default function AsistenciaGrid({
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-yellow-100 text-xs font-bold text-yellow-700">F</span>
-          Cancelacion de clase
+          Cancelación de clase
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">NL</span>

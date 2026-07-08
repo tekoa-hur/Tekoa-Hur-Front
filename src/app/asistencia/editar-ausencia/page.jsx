@@ -8,7 +8,7 @@ import { BACK_URL, getAuthHeaders } from "@/config/api";
 
 export default function EditarAusenciaPage() {
   return (
-    <ProtectedRoute roles={["administrador"]}>
+    <ProtectedRoute roles={["administrador", "docente"]}>
       <EditarAusenciaContenido />
     </ProtectedRoute>
   );
@@ -17,6 +17,7 @@ export default function EditarAusenciaPage() {
 function EditarAusenciaContenido() {
   const router = useRouter();
   const { usuario } = useAuth();
+  const isDocente = usuario?.rol === "docente";
 
   const headers = useMemo(
     () => ({
@@ -27,9 +28,9 @@ function EditarAusenciaContenido() {
     []
   );
 
-  const [materias, setMaterias] = useState([]);
-  const [comisiones, setComisiones] = useState([]);
-  const [diasSinClase, setDiasSinClase] = useState([]);
+  const [todasLasMaterias, setTodasLasMaterias] = useState([]);
+  const [todasLasComisiones, setTodasLasComisiones] = useState([]);
+  const [todosLosDiasSinClase, setTodosLosDiasSinClase] = useState([]);
   const [tipoEventos, setTipoEventos] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -43,36 +44,80 @@ function EditarAusenciaContenido() {
   const [descripcion, setDescripcion] = useState("");
   const [sinClase, setSinClase] = useState(true);
   
-  const [tipoEventoId, setTipoEventoId] = useState("e4149267-e3dd-4824-abde-1cd9a6a09699");
-  const TIPO_EVENTO_DIA_SIN_CLASE = "e4149267-e3dd-4824-abde-1cd9a6a09699";
+  const [tipoEventoId, setTipoEventoId] = useState("");
 
-  // --- ESTADO PARA LOGICA DE EDICION ---
   const [editandoId, setEditandoId] = useState(null);
-
-  // --- ESTADOS PARA EL MODAL DE CONFIRMACIÓN ---
   const [modalAbierto, setModalAbierto] = useState(false);
   const [idParaBorrar, setIdParaBorrar] = useState(null);
-
-  // --- NUEVO: ESTADO PARA FILTRAR LA TABLA POR DROPDOWN ---
   const [filtroMateriaId, setFiltroMateriaId] = useState("");
-
-  // --- ESTADOS PARA PAGINACIÓN ---
   const [paginaActual, setPaginaActual] = useState(1);
   const REGISTROS_POR_PAGINA = 5;
 
+  const searchParams = useSearchParams();
+
+  // 1. Filtrar las comisiones que le pertenecen al docente (o todas si es admin)
+  const comisiones = useMemo(() => {
+    if (isDocente && usuario) {
+      return todasLasComisiones.filter(
+        (c) => String(c.docenteId) === String(usuario.id) || String(c.usuarioId) === String(usuario.id)
+      );
+    }
+    return todasLasComisiones;
+  }, [todasLasComisiones, isDocente, usuario]);
+
+  // 2. Filtrar las materias base que dicta el profesor (o todas si es admin)
+  const materiasDelProfesor = useMemo(() => {
+    if (isDocente) {
+      const misMateriasIds = new Set(comisiones.map((c) => String(c.materiaId)));
+      return todasLasMaterias.filter((m) => misMateriasIds.has(String(m.materiaId)));
+    }
+    return todasLasMaterias;
+  }, [todasLasMaterias, comisiones, isDocente]);
+
+  // 3. Filtrar los días sin clase asociados a las comisiones del profesor
+  const diasSinClase = useMemo(() => {
+    if (isDocente) {
+      const misComisionesIds = new Set(comisiones.map((c) => String(c.comisionId)));
+      return todosLosDiasSinClase.filter((d) => misComisionesIds.has(String(d.comisionId)));
+    }
+    return todosLosDiasSinClase;
+  }, [todosLosDiasSinClase, comisiones, isDocente]);
+
+  // Si ya eligió una comisión, acotar la lista de materias del formulario a esa en específico
+  const materiasFormulario = useMemo(() => {
+    if (comisionId) {
+      const comisionSeleccionada = comisiones.find((c) => String(c.comisionId) === String(comisionId));
+      if (comisionSeleccionada) {
+        return materiasDelProfesor.filter((m) => String(m.materiaId) === String(comisionSeleccionada.materiaId));
+      }
+    }
+    return materiasDelProfesor;
+  }, [materiasDelProfesor, comisionId, comisiones]);
+
+  // Filtrar comisiones asociadas a la materia seleccionada
+  const comisionesFiltradas = useMemo(() => {
+    if (!materiaId) return comisiones;
+    return comisiones.filter((comision) => String(comision.materiaId) === String(materiaId));
+  }, [comisiones, materiaId]);
+
   const limpiarFormulario = () => {
-    setMateriaId("");
-    setComisionId("");
     setFecha("");
     setDescripcion("");
     setSinClase(true);
-    setTipoEventoId(TIPO_EVENTO_DIA_SIN_CLASE);
+    setTipoEventoId(tipoEventos[0]?.tipoEventoId || "");
     setEditandoId(null);
+    
+    if (isDocente && comisiones.length > 0) {
+      const primeraComision = comisiones[0];
+      setComisionId(primeraComision.comisionId || "");
+      setMateriaId(primeraComision.materiaId || "");
+    } else {
+      setMateriaId("");
+      setComisionId("");
+    }
   };
 
-  const searchParams = useSearchParams();
-
-  // 1. Cargar datos iniciales del formulario desde la API al montar el componente
+  // Cargar datos iniciales de la API
   useEffect(() => {
     if (!usuario || !BACK_URL) return;
 
@@ -85,10 +130,14 @@ function EditarAusenciaContenido() {
         if (!respuesta.ok) throw new Error("No se pudieron cargar los datos iniciales.");
         
         const datosFormulario = await respuesta.json();
-        setMaterias(Array.isArray(datosFormulario.materias) ? datosFormulario.materias : []);
-        setComisiones(Array.isArray(datosFormulario.comisiones) ? datosFormulario.comisiones : []);
-        setDiasSinClase(Array.isArray(datosFormulario.diasSinClase) ? datosFormulario.diasSinClase : []);
+        setTodasLasMaterias(Array.isArray(datosFormulario.materias) ? datosFormulario.materias : []);
+        setTodasLasComisiones(Array.isArray(datosFormulario.comisiones) ? datosFormulario.comisiones : []);
+        setTodosLosDiasSinClase(Array.isArray(datosFormulario.diasSinClase) ? datosFormulario.diasSinClase : []);
         setTipoEventos(Array.isArray(datosFormulario.tipoEventos) ? datosFormulario.tipoEventos : []);
+        
+        if (Array.isArray(datosFormulario.tipoEventos) && datosFormulario.tipoEventos.length > 0) {
+          setTipoEventoId(datosFormulario.tipoEventos[0].tipoEventoId);
+        }
       } catch (errorCapturado) {
         setError(errorCapturado.message || "Error cargando datos.");
       } finally {
@@ -99,44 +148,48 @@ function EditarAusenciaContenido() {
     cargarDatosInicialesFormulario();
   }, [usuario, headers]);
 
-  const comisionesFiltradas = !materiaId
-    ? comisiones
-    : comisiones.filter((comision) => String(comision.materiaId) === String(materiaId));
+  // Manejar inicialización de estados por Query Params o por Selección por Defecto
+  useEffect(() => {
+    if (loading || comisiones.length === 0) return;
+
+    const urlMateriaId = searchParams.get("materiaId");
+    const urlComisionId = searchParams.get("comisionId");
+
+    if (urlMateriaId || urlComisionId) {
+      if (urlMateriaId) {
+        setMateriaId(urlMateriaId);
+        setFiltroMateriaId(urlMateriaId);
+      }
+      if (urlComisionId) {
+        setComisionId(urlComisionId);
+      }
+    } else if (isDocente) {
+      const primeraComision = comisiones[0];
+      setComisionId(primeraComision.comisionId || "");
+      setMateriaId(primeraComision.materiaId || "");
+      setFiltroMateriaId(primeraComision.materiaId || "");
+    }
+  }, [searchParams, loading, comisiones, isDocente]);
 
   const registroExistente = !comisionId || !fecha
     ? null
     : diasSinClase.find((dia) => String(dia.comisionId) === String(comisionId) && dia.fecha === fecha);
 
-  // 2. Sincronizar el formulario si ya existe un evento registrado para la comisión y fecha seleccionadas
   useEffect(() => {
     if (editandoId) return;
 
     if (registroExistente) {
       setSinClase(true);
       setDescripcion(registroExistente.descripcion || "");
-      setTipoEventoId(registroExistente.tipoEventoId || TIPO_EVENTO_DIA_SIN_CLASE);
+      setTipoEventoId(registroExistente.tipoEventoId || tipoEventos[0]?.tipoEventoId || "");
     } else {
       setSinClase(false);
       setDescripcion("");
-      setTipoEventoId(TIPO_EVENTO_DIA_SIN_CLASE);
+      setTipoEventoId(tipoEventos[0]?.tipoEventoId || "");
     }
-  }, [registroExistente, editandoId]);
+  }, [registroExistente, editandoId, tipoEventos]);
 
-  // 3. Leer parámetros de la URL para preseleccionar Materia y Comisión (vía Grilla de Asistencias)
-  useEffect(() => {
-    const urlMateriaId = searchParams.get("materiaId");
-    const urlComisionId = searchParams.get("comisionId");
-
-    if (urlMateriaId) {
-      setMateriaId(urlMateriaId);
-      setFiltroMateriaId(urlMateriaId);
-    }
-    if (urlComisionId) {
-      setComisionId(urlComisionId);
-    }
-  }, [searchParams]);
-
-  // Filtrado y ordenamiento de la tabla de días sin clase cada vez que cambian los datos, el filtro o las comisiones (para mostrar el nombre de la materia asociada)
+  // Filtrado y ordenamiento de la tabla inferior
   const diasSinClaseProcesados = useMemo(() => {
     let listaFiltrada = [...diasSinClase];
     
@@ -158,35 +211,31 @@ function EditarAusenciaContenido() {
       const nombreMateriaB = comisionDiaB?.materia?.nombre || "";
       const codigoComisionB = comisionDiaB?.cod_comision || "";
 
-      const comparacionMateria = nombreMateriaA.localeCompare(nombreMateriaB); //método nativo de JavaScript que sirve para comparar dos cadenas
+      const comparacionMateria = nombreMateriaA.localeCompare(nombreMateriaB);
       if (comparacionMateria !== 0) return comparacionMateria;
 
       return codigoComisionA.localeCompare(codigoComisionB);
     });
   }, [diasSinClase, comisiones, filtroMateriaId]);
 
-  // 4. Reiniciar el índice de la paginación a la primera página cuando cambie el filtro de materias
   useEffect(() => {
     setPaginaActual(1);
   }, [filtroMateriaId]);
 
-  // --- CÁLCULO DE PAGINACIÓN ---
   const totalPaginas = Math.ceil(diasSinClaseProcesados.length / REGISTROS_POR_PAGINA);
   
-  const registrosPaginados = useMemo(() => { // en este caso si xq calcula el resultado durante el render
+  const registrosPaginados = useMemo(() => {
     const indiceInicio = (paginaActual - 1) * REGISTROS_POR_PAGINA;
     const indiceFin = indiceInicio + REGISTROS_POR_PAGINA;
     return diasSinClaseProcesados.slice(indiceInicio, indiceFin);
   }, [diasSinClaseProcesados, paginaActual]);
 
-  // 5. Ajustar la página actual si los registros se reducen y la página actual queda fuera de rango
   useEffect(() => {
     if (paginaActual > totalPaginas && totalPaginas > 0) {
       setPaginaActual(totalPaginas);
     }
   }, [totalPaginas, paginaActual]);
 
-  // --- CARGAR DATOS PARA EDICIÓN ---
   const cargarParaEditar = (item) => {
     setError("");
     setSuccess("");
@@ -194,7 +243,7 @@ function EditarAusenciaContenido() {
     setFecha(item.fecha || "");
     setDescripcion(item.descripcion || "");
     setSinClase(true);
-    setTipoEventoId(item.tipoEventoId || TIPO_EVENTO_DIA_SIN_CLASE);
+    setTipoEventoId(item.tipoEventoId || tipoEventos[0]?.tipoEventoId || "");
     setComisionId(item.comisionId || "");
 
     const comisionAsociada = comisiones.find(c => String(c.comisionId) === String(item.comisionId));
@@ -226,7 +275,7 @@ function EditarAusenciaContenido() {
 
       if (!response.ok) throw new Error("No se pudo restaurar el día de clases.");
 
-      setDiasSinClase(prev => prev.filter(item => item.diaSinClaseId !== idParaBorrar));
+      setTodosLosDiasSinClase(prev => prev.filter(item => item.diaSinClaseId !== idParaBorrar));
       setSuccess("El día volvió a marcarse como día normal de clases.");
       limpiarFormulario();
     } catch (e) {
@@ -241,6 +290,14 @@ function EditarAusenciaContenido() {
     if (!comisionId || !fecha) {
       setError("Seleccioná comisión y fecha.");
       return;
+    }
+
+    if (isDocente) {
+      const esMia = comisiones.some(c => String(c.comisionId) === String(comisionId));
+      if (!esMia) {
+        setError("No tenés permisos para modificar esta comisión.");
+        return;
+      }
     }
 
     setGuardando(true);
@@ -258,7 +315,7 @@ function EditarAusenciaContenido() {
 
         if (!sinClase) {
           await fetch(`${BACK_URL}/api/diaSinClase/${editandoId}`, { method: "DELETE", headers });
-          setDiasSinClase(prev => prev.filter(item => item.diaSinClaseId !== editandoId));
+          setTodosLosDiasSinClase(prev => prev.filter(item => item.diaSinClaseId !== editandoId));
           setSuccess("El día se guardó como jornada normal (eliminado de excepciones).");
           limpiarFormulario();
           return;
@@ -284,7 +341,7 @@ function EditarAusenciaContenido() {
           comision: comisionAsociada 
         };
 
-        setDiasSinClase(prev => prev.map(item => item.diaSinClaseId === editandoId ? modificadoFormateado : item));
+        setTodosLosDiasSinClase(prev => prev.map(item => item.diaSinClaseId === editandoId ? modificadoFormateado : item));
         setSuccess("Día sin clases modificado correctamente.");
         limpiarFormulario();
         return;
@@ -315,7 +372,7 @@ function EditarAusenciaContenido() {
         const comisionAsociada = comisiones.find(c => String(c.comisionId) === String(comisionId));
         const nuevoFormateado = { ...nuevo, comision: comisionAsociada };
 
-        setDiasSinClase(prev => [...prev, nuevoFormateado]);
+        setTodosLosDiasSinClase(prev => [...prev, nuevoFormateado]);
         setSuccess("Día marcado correctamente como sin clases.");
         limpiarFormulario();
       } else {
@@ -333,16 +390,16 @@ function EditarAusenciaContenido() {
   }
 
   const obtenerDetalleComision = (comisionId) => {
-  if (!comisionId) return "Sin Comisión";
+    if (!comisionId) return "Sin Comisión";
 
-  const comision = comisiones.find(c => String(c.comisionId) === String(comisionId));
-  if (!comision) return `Comisión ID: ${comisionId}`;
+    const comision = comisiones.find(c => String(c.comisionId) === String(comisionId));
+    if (!comision) return `Comisión ID: ${comisionId}`;
 
-  const nombreMateria = comision.materia?.nombre;
-  return nombreMateria 
-    ? `${comision.cod_comision} — ${nombreMateria}` 
-    : comision.cod_comision;
-};
+    const nombreMateria = comision.materia?.nombre;
+    return nombreMateria 
+      ? `${comision.cod_comision} — ${nombreMateria}` 
+      : comision.cod_comision;
+  };
 
   return (
     <div className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
@@ -386,13 +443,28 @@ function EditarAusenciaContenido() {
                 <select
                   value={materiaId || ""}
                   onChange={(e) => {
-                    setMateriaId(e.target.value);
-                    setComisionId("");
+                    const selectedMateriaId = e.target.value;
+                    
+                    if (!selectedMateriaId && isDocente && comisiones.length > 0) {
+                      const primeraComision = comisiones[0];
+                      setMateriaId(primeraComision.materiaId || "");
+                      setComisionId(primeraComision.comisionId || "");
+                      return;
+                    }
+
+                    setMateriaId(selectedMateriaId);
+                    
+                    const comisionesDeMateria = comisiones.filter(c => String(c.materiaId) === String(selectedMateriaId));
+                    if (comisionesDeMateria.length > 0) {
+                      setComisionId(comisionesDeMateria[0].comisionId);
+                    } else {
+                      setComisionId("");
+                    }
                   }}
                   className="rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-200"
                 >
-                  <option value="">Seleccionar materia</option>
-                  {materias.map((m) => (
+                  {!isDocente && <option value="">Seleccionar materia</option>}
+                  {materiasFormulario.map((m) => (
                     <option key={m.materiaId} value={m.materiaId}>{m.nombre}</option>
                   ))}
                 </select>
@@ -403,7 +475,12 @@ function EditarAusenciaContenido() {
                 <label className="text-sm font-medium text-gray-700">Comisión</label>
                 <select
                   value={comisionId || ""}
-                  onChange={(e) => setComisionId(e.target.value)}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setComisionId(id);
+                    const com = comisiones.find(c => String(c.comisionId) === String(id));
+                    if (com) setMateriaId(com.materiaId || "");
+                  }}
                   className="rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-200"
                 >
                   <option value="">Seleccionar comisión</option>
@@ -505,10 +582,9 @@ function EditarAusenciaContenido() {
         </div>
 
         {/* Tabla con Filtro Dinámico */}
-        {!loading && diasSinClase.length > 0 && (
+        {!loading && todosLosDiasSinClase.length > 0 && (
           <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200 space-y-5">
             
-            {/* Header de la Tabla y Dropdown de Filtrado */}
             <div className="flex items-end justify-between gap-4 flex-wrap border-b border-gray-100 pb-4">
               <div className="space-y-1">
                 <h2 className="text-lg font-bold text-gray-800">Días sin clase registrados</h2>
@@ -524,7 +600,7 @@ function EditarAusenciaContenido() {
                   className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-700 focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-200"
                 >
                   <option value="">Todas las materias</option>
-                  {materias.map((m) => (
+                  {materiasDelProfesor.map((m) => (
                     <option key={m.materiaId} value={m.materiaId}>{m.nombre}</option>
                   ))}
                 </select>

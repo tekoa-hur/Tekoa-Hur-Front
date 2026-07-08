@@ -167,6 +167,8 @@ function AsistenciaContenido() {
                         p => p.dni === usuario.referenciaId || p.dni === usuario.dni
                     );
                     if (!profesor) { setError("No encontramos tu perfil de docente."); return; }
+                    
+                    // Esto es para filtrar estrictamente para que el docente solo vea sus comisiones
                     setComisiones(
                         Array.isArray(comList)
                             ? comList.filter(c => String(c.profesorId) === String(profesor.profesorId))
@@ -198,9 +200,24 @@ function AsistenciaContenido() {
 
     const comisionInfo = comisiones.find(c => c.comisionId === comisionId);
 
+    // Guardrail de seguridad en el frontend: Evitar que un docente intente forzar la URL de otra comisión
+    useEffect(() => {
+        if (isDocente && comisionId && comisiones.length > 0) {
+            const perteneceAlDocente = comisiones.some(c => String(c.comisionId) === String(comisionId));
+            if (!perteneceAlDocente) {
+                setComisionId("");
+                setFechas([]); setAlumnos([]); setAsistencias([]);
+                setError("No tenés permisos para ver esta comisión.");
+            }
+        }
+    }, [comisionId, comisiones, isDocente]);
+
     // ── Cargar asistencias ───────────────────────────────────────
     useEffect(() => {
         if (!comisionId || !BACK_URL) return;
+        // Si es docente y la comisión actual no está en su listado permitido, frenar la petición
+        if (isDocente && !comisiones.some(c => String(c.comisionId) === String(comisionId))) return;
+
         (async () => {
             setLoading(true); setError("");
             try {
@@ -239,7 +256,6 @@ function AsistenciaContenido() {
                     r => r.tipoUsuario === "ESTUDIANTE" && estaEnPeriodo(r.fecha, periodoData)
                 );
 
-                // Mostrar feriados solo dentro del periodo de dictado
                 const fechasFeriados = feriadosData
                     .map(f => f.fecha)
                     .filter(f =>
@@ -247,7 +263,6 @@ function AsistenciaContenido() {
                         correspondeADiaDeCursada(f, horariosComision)
                     );
 
-                // filtra los dias que no hubo clases
                 const fechasDiasSinClase = diasSinClaseComision
                     .map(f => f.fecha)
                     .filter(f =>
@@ -255,21 +270,46 @@ function AsistenciaContenido() {
                         correspondeADiaDeCursada(f, horariosComision)
                     );
 
-                /**
-                * Genera todas las fechas que deberían existir en la cursada hasta el día de hoy.
-                * Ya no dependemos de que exista una asistencia cargada.
-                */
                 const fechasOrd = generarFechasCursada(
                     periodoData,
                     horariosComision
                 );
 
-                //Estados
-                const asisFormateadas = soloEstudiantes.map(r => ({
-                    alumnoId: String(r.usuarioId),
-                    fecha: r.fecha,
-                    estado: r.estado,
-                }));
+                // 1. Mapeamos las asistencias normales que sí existen de los estudiantes
+const asisFormateadas = soloEstudiantes.map(r => ({
+    alumnoId: String(r.usuarioId),
+    fecha: r.fecha,
+    estado: r.estado || "A",
+}));
+
+// forzamos el motivo del "Día Sin Clase" para TODOS los alumnos en esa fecha
+if (Array.isArray(diasSinClaseComision) && diasSinClaseComision.length > 0) {
+    diasSinClaseComision.forEach(dia => {
+        // Buscamos el código o nombre del evento (ej: "PD" para Paro Docente, "NL" para No Laborable)
+        // Usamos el nombre
+        const motivoCodigo = dia.tipoEvento?.nombre || dia.descripcion || "NSC";
+
+        // Para cada alumno de la comisión, le generamos un registro de "asistencia" con el motivo
+        alumnosFormateados.forEach(alumno => {
+            // Buscamos si ya existía un registro para este alumno en esta fecha para pisarlo o añadirlo
+            const indexExistente = asisFormateadas.findIndex(
+                a => a.alumnoId === String(alumno.id) && a.fecha === dia.fecha
+            );
+
+            if (indexExistente !== -1) {
+                // Si existía, lo pisamos con el motivo real
+                asisFormateadas[indexExistente].estado = motivoCodigo;
+            } else {
+                // Si no existía registro, lo agregamos para que la grilla lo dibuje
+                asisFormateadas.push({
+                    alumnoId: String(alumno.id),
+                    fecha: dia.fecha,
+                    estado: motivoCodigo
+                });
+            }
+        });
+    });
+}
 
                 setFechas(fechasOrd);
                 setAlumnos(alumnosFormateados);
@@ -286,8 +326,7 @@ function AsistenciaContenido() {
                             }))
                         : []),
                     ...diasSinClaseComision
-                        .filter(f => estaEnPeriodo(f.fecha, periodoData) && correspondeADiaDeCursada(f.fecha, horariosComision))
-                        .map(f => ({
+.filter(f => estaEnPeriodo(f.fecha, periodoData) && correspondeADiaDeCursada(f.fecha, horariosComision))                        .map(f => ({
                             fecha: f.fecha,
                             tipo: f.tipoEvento?.nombre,
                             descripcion: f.descripcion,
@@ -299,7 +338,7 @@ function AsistenciaContenido() {
                 setLoading(false);
             }
         })();
-    }, [comisionId, headers, comisionInfo]);
+    }, [comisionId, headers, comisionInfo, isDocente, comisiones]);
 
     const tituloExcel = `Asistencia_${comisionInfo?.cod_comision ?? comisionId}_${new Date().toISOString().split("T")[0]}`;
 
@@ -332,20 +371,22 @@ function AsistenciaContenido() {
 
                         {/* Controles de navegación y edición */}
                         <div className="flex items-center gap-3 flex-wrap">
-                            {isAdmin && (
+                            {(isAdmin || isDocente) && (
                                 <>
-                                    <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
-                                        <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-green-800 shadow-sm">
-                                            🧑‍🎓 Estudiantes
+                                    {/* El selector de visualización Alumnos/Docentes sólo tiene sentido para el Administrador */}
+                                    {isAdmin && (
+                                        <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
+                                            <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-green-800 shadow-sm">
+                                                🧑‍🎓 Estudiantes
+                                            </div>
+                                            <button
+                                                onClick={() => router.push("/asistencia-docente")}
+                                                className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-500 transition hover:text-gray-700"
+                                            >
+                                                👨‍🏫 Docentes
+                                            </button>
                                         </div>
-
-                                        <button
-                                            onClick={() => router.push("/asistencia-docente")}
-                                            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-500 transition hover:text-gray-700"
-                                        >
-                                            👨‍🏫 Docentes
-                                        </button>
-                                    </div>
+                                    )}
 
                                     {/* Botón editar con query params */}
                                     <button
@@ -373,7 +414,7 @@ function AsistenciaContenido() {
                 <div className="mb-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
                     <div className={`grid gap-4 ${isAdmin ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
 
-                        {/* Filtro por materia — solo admin */}
+                        {/* Filtro por materia — SOLO para Admin */}
                         {isAdmin && (
                             <div className="flex flex-col gap-1.5">
                                 <label htmlFor="materia" className="text-sm font-medium text-gray-700">Materia</label>
@@ -457,7 +498,7 @@ function AsistenciaContenido() {
                             {comisionInfo.materia?.nombre && (
                                 <span><strong className="text-gray-700">Materia:</strong> {comisionInfo.materia.nombre}</span>
                             )}
-                            {isAdmin && comisionInfo.profesor?.nombre_apellido && (
+                            {comisionInfo.profesor?.nombre_apellido && (
                                 <span><strong className="text-gray-700">Docente:</strong> {comisionInfo.profesor.nombre_apellido}</span>
                             )}
                             {alumnos.length > 0 && (
