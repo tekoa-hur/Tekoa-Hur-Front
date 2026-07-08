@@ -309,53 +309,132 @@ function HistorialImportacionesContenido() {
                                 </div>
                             </div>
 
-                            {/* Resultados */}
+                            {/* Resultados — renderizado según el origen */}
                             <h3 className="mb-3 text-lg font-semibold text-green-800">
                                 Resultado de la importación
                             </h3>
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                                <p>Edificios:</p>
-                                <p>{importacionSeleccionada.detalle.edificios}</p>
-                                <p>Aulas:</p>
-                                <p>{importacionSeleccionada.detalle.aulas}</p>
-                                <p>Profesores:</p>
-                                <p>{importacionSeleccionada.detalle.profesores}</p>
-                                <p>Materias:</p>
-                                <p>{importacionSeleccionada.detalle.materias}</p>
-                                <p>Comisiones:</p>
-                                <p>{importacionSeleccionada.detalle.comisiones}</p>
-                                <p>Horarios:</p>
-                                <p>{importacionSeleccionada.detalle.horarios}</p>
-                                <p>Estudiantes:</p>
-                                <p>{importacionSeleccionada.detalle.estudiantes}</p>
-                                <p>Matrículas:</p>
-                                <p>{importacionSeleccionada.detalle.matriculas}</p>
-                                <p>Usuarios creados:</p>
-                                <p>{importacionSeleccionada.detalle.usuariosCreados}</p>
-                            </div>
 
-                            {/* Errores */}
+                            {importacionSeleccionada.origen === "AULAS" ? (
+                                // ─── Detalle específico de importación de AULAS ───
+                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                    <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-center">
+                                        <p className="text-2xl font-bold text-green-800">
+                                            {importacionSeleccionada.detalle?.creadas ?? 0}
+                                        </p>
+                                        <p className="mt-1 text-xs font-medium text-green-700">
+                                            Creadas
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-center">
+                                        <p className="text-2xl font-bold text-blue-800">
+                                            {importacionSeleccionada.detalle?.actualizadas ?? 0}
+                                        </p>
+                                        <p className="mt-1 text-xs font-medium text-blue-700">
+                                            Actualizadas
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-center">
+                                        <p className="text-2xl font-bold text-gray-600">
+                                            {importacionSeleccionada.detalle?.ignoradas ?? 0}
+                                        </p>
+                                        <p className="mt-1 text-xs font-medium text-gray-600">
+                                            Ignoradas
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-center">
+                                        <p className="text-2xl font-bold text-red-800">
+                                            {importacionSeleccionada.detalle?.errores?.length ?? 0}
+                                        </p>
+                                        <p className="mt-1 text-xs font-medium text-red-700">
+                                            Errores
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                // ─── Detalle de importaciones "clásicas" (comisiones, alumnos, etc.) ───
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <p>Edificios:</p>
+                                    <p>{importacionSeleccionada.detalle?.edificios}</p>
+                                    <p>Aulas:</p>
+                                    <p>{importacionSeleccionada.detalle?.aulas}</p>
+                                    <p>Profesores:</p>
+                                    <p>{importacionSeleccionada.detalle?.profesores}</p>
+                                    <p>Materias:</p>
+                                    <p>{importacionSeleccionada.detalle?.materias}</p>
+                                    <p>Comisiones:</p>
+                                    <p>{importacionSeleccionada.detalle?.comisiones}</p>
+                                    <p>Horarios:</p>
+                                    <p>{importacionSeleccionada.detalle?.horarios}</p>
+                                    <p>Estudiantes:</p>
+                                    <p>{importacionSeleccionada.detalle?.estudiantes}</p>
+                                    <p>Matrículas:</p>
+                                    <p>{importacionSeleccionada.detalle?.matriculas}</p>
+                                    <p>Usuarios creados:</p>
+                                    <p>{importacionSeleccionada.detalle?.usuariosCreados}</p>
+                                </div>
+                            )}
+
+                            {/* Errores — mismo bloque para todos los orígenes */}
                             <h3 className="mt-6 mb-3 text-lg font-semibold text-red-700">
                                 Errores
                             </h3>
                             {
-                                importacionSeleccionada.detalle.errores.length === 0 ? (
-                                    <p className="text-sm text-green-700">
-                                        No se registraron errores durante la importación.
-                                    </p>
-                                ) : (
-                                    <ul className="list-disc pl-5 text-sm text-red-700">
-                                        {
-                                            importacionSeleccionada.detalle.errores.map(
-                                                (error, indice) => (
-                                                    <li key={indice}>
-                                                        {error}
-                                                    </li>
-                                                )
-                                            )
-                                        }
-                                    </ul>
-                                )
+                                (() => {
+                                    // Los errores de AULAS son objetos { fila, motivo }.
+                                    // Los errores clásicos son strings.
+                                    // Normalizamos para renderizar los dos casos.
+                                    const errores = importacionSeleccionada.detalle?.errores ?? [];
+                                    if (errores.length === 0) {
+                                        return (
+                                            <p className="text-sm text-green-700">
+                                                No se registraron errores durante la importación.
+                                            </p>
+                                        );
+                                    }
+                                    // Si son objetos con fila/motivo → tabla
+                                    const esFormatoAulas =
+                                        typeof errores[0] === "object" &&
+                                        errores[0] !== null &&
+                                        "fila" in errores[0];
+                                    if (esFormatoAulas) {
+                                        return (
+                                            <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200">
+                                                <table className="w-full text-sm">
+                                                    <thead className="sticky top-0 bg-gray-50">
+                                                        <tr>
+                                                            <th className="px-3 py-2 text-left font-semibold text-gray-600 w-20">
+                                                                Fila
+                                                            </th>
+                                                            <th className="px-3 py-2 text-left font-semibold text-gray-600">
+                                                                Motivo
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-100">
+                                                        {errores.map((err, indice) => (
+                                                            <tr key={indice}>
+                                                                <td className="px-3 py-2 font-mono text-gray-500">
+                                                                    {err.fila}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-gray-700">
+                                                                    {err.motivo}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        );
+                                    }
+                                    // Fallback: lista de strings (formato clásico)
+                                    return (
+                                        <ul className="list-disc pl-5 text-sm text-red-700">
+                                            {errores.map((error, indice) => (
+                                                <li key={indice}>{error}</li>
+                                            ))}
+                                        </ul>
+                                    );
+                                })()
                             }
 
                             {/* Pie */}
