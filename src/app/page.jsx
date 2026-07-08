@@ -84,7 +84,15 @@ const MENU_ITEMS = [
     variant: "secondary",
     roles: ["administrador"],
   },
-  {
+    {
+    href: "/importar-aulas",
+    label: "Importar Aulas",
+    description: "Cargá o actualizá las aulas desde el archivo Excel maestro",
+    icon: "🏢",
+    variant: "secondary",
+    roles: ["administrador"],
+  },
+{
     href: "/historial-importaciones",
     label: "Historial de Importaciones",
     description: "Consultá las importaciones realizadas y descargá los archivos originales",
