@@ -5,6 +5,24 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { BACK_URL, getAuthHeaders } from "@/config/api";
+import {
+  QrCode,
+  Camera,
+  ClipboardList,
+  BarChart3,
+  FileSpreadsheet,
+  Building2,
+  History,
+  Users,
+  Landmark,
+  CalendarDays,
+  KeyRound,
+  Clock,
+  DoorOpen,
+  CheckCircle2,
+  X,
+  Loader2,
+} from "lucide-react";
 
 // ─── Días en español sin tilde (igual que el backend) ────────
 const DIAS = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
@@ -22,115 +40,114 @@ function horaActual() {
 function horaMenorIgual(a, b) { return a <= b; }
 
 // ─── Menú de opciones por rol ─────────────────────────────────
+// Icons de lucide-react (trazo fino, monocromático, profesional).
 // Nota sobre los items con `labelPorRol`: cuando un mismo path
 // significa cosas distintas según el rol, definimos el label en
 // función del rol. Si no, usamos `label` fijo.
 const MENU_ITEMS = [
   {
     href: "/generar-qr",
-    label: "Generar QR del Aula",
+    label: "Generar QR del aula",
     description: "Creá un código QR para identificar un aula",
-    icon: "🏛️",
+    Icon: QrCode,
     variant: "primary",
     roles: ["docente", "administrador"],
   },
   {
     href: "/leer-qr",
-    // Para admins el lector sirve para PROBAR los QR generados,
-    // no para registrar asistencia. Lo dejamos claro en el label.
     labelPorRol: {
-      alumno: "Leer Código QR",
-      docente: "Leer Código QR",
-      administrador: "Probar QR de Aulas",
+      alumno: "Leer código QR",
+      docente: "Leer código QR",
+      administrador: "Probar QR de aulas",
     },
     descripcionPorRol: {
       alumno: "Escaneá un QR para registrar asistencia",
       docente: "Escaneá un QR para registrar asistencia",
       administrador: "Verificá que los QR de aulas generados funcionen",
     },
-    icon: "📷",
+    Icon: Camera,
     variant: "primary",
     roles: ["alumno", "docente", "administrador"],
   },
   {
     href: "/mis-asistencias",
-    label: "Mis Asistencias",
+    label: "Mis asistencias",
     description: "Consultá tu historial de asistencia por materia",
-    icon: "📋",
+    Icon: ClipboardList,
     variant: "secondary",
     roles: ["alumno"],
   },
   {
     href: "/mis-asistencias-docente",
-    label: "Mi Asistencia",
+    label: "Mi asistencia",
     description: "Consultá tu propio historial de asistencia como docente",
-    icon: "📋",
+    Icon: ClipboardList,
     variant: "secondary",
     roles: ["docente"],
   },
   {
     href: "/asistencia",
-    label: "Listado de Asistencia",
+    label: "Listado de asistencia",
     description: "Consultá el historial de asistencias por comisión",
-    icon: "📊",
+    Icon: BarChart3,
     variant: "secondary",
     roles: ["docente", "administrador"],
   },
   {
     href: "/importar",
-    label: "Cargar Planilla",
+    label: "Cargar planilla",
     description: "Importá el archivo Excel con comisiones y alumnos",
-    icon: "📁",
+    Icon: FileSpreadsheet,
     variant: "secondary",
     roles: ["administrador"],
   },
-    {
+  {
     href: "/importar-aulas",
-    label: "Importar Aulas",
+    label: "Importar aulas",
     description: "Cargá o actualizá las aulas desde el archivo Excel maestro",
-    icon: "🏢",
+    Icon: Building2,
     variant: "secondary",
     roles: ["administrador"],
   },
-{
+  {
     href: "/historial-importaciones",
-    label: "Historial de Importaciones",
-    description: "Consultá las importaciones realizadas y descargá los archivos originales",
-    icon: "📋",
+    label: "Historial de importaciones",
+    description: "Consultá las importaciones realizadas y descargá los archivos",
+    Icon: History,
     variant: "secondary",
     roles: ["administrador"],
   },
   {
     href: "/prueba-conexion",
-    label: "Listado de Estudiantes",
+    label: "Listado de estudiantes",
     description: "Visualizá el padrón de estudiantes registrados",
-    icon: "👥",
+    Icon: Users,
     variant: "secondary",
     roles: ["docente", "administrador"],
   },
   {
     href: "/admin-aulas",
-    label: "Gestión de Aulas",
+    label: "Gestión de aulas",
     description: "Configurá los atributos y equipamiento de cada aula",
-    icon: "🏛️",
+    Icon: Landmark,
     variant: "secondary",
     roles: ["administrador"],
   },
   {
     // Nota: la URL sigue siendo /admin-espacios por compatibilidad,
-    // pero el usuario ve "Gestión de Eventos" en el menú.
+    // pero el usuario ve "Gestión de eventos" en el menú.
     href: "/admin-espacios",
-    label: "Gestión de Eventos",
+    label: "Gestión de eventos",
     description: "Reservá aulas para eventos, reuniones o charlas",
-    icon: "📅",
+    Icon: CalendarDays,
     variant: "secondary",
     roles: ["administrador"],
   },
   {
     href: "/admin-usuarios",
-    label: "Gestión de Usuarios",
+    label: "Gestión de usuarios",
     description: "Administrá los accesos y roles del sistema",
-    icon: "🔑",
+    Icon: KeyRound,
     variant: "secondary",
     roles: ["administrador"],
   },
@@ -142,11 +159,11 @@ export default function HomePage() {
   const headers = useMemo(() => ({ Accept: "application/json", ...getAuthHeaders() }), []);
 
   // ── Estado para el aviso de clase activa del docente ─────────
-  const [clasesActivas, setClasesActivas] = useState([]); // [{comision, horario}]
+  const [clasesActivas, setClasesActivas] = useState([]);
   const [registrando, setRegistrando] = useState(false);
-  const [msgPresente, setMsgPresente] = useState(""); // éxito o error del registro
-  const [yaRegistrado, setYaRegistrado] = useState({}); // {comisionId: true}
-  const [descartado, setDescartado] = useState(false); // el docente cerró el aviso
+  const [msgPresente, setMsgPresente] = useState("");
+  const [yaRegistrado, setYaRegistrado] = useState({});
+  const [descartado, setDescartado] = useState(false);
 
   useEffect(() => {
     if (!loading && !usuario) router.push("/login");
@@ -158,7 +175,6 @@ export default function HomePage() {
 
     (async () => {
       try {
-        // 1. Obtener profesorId del docente logueado
         const resProf = await fetch(`${BACK_URL}/api/profesores`, { headers });
         const profList = await resProf.json();
         const profesor = profList.find(
@@ -166,7 +182,6 @@ export default function HomePage() {
         );
         if (!profesor) return;
 
-        // 2. Obtener sus comisiones con horarios
         const resCom = await fetch(`${BACK_URL}/api/comisiones`, { headers });
         const comList = await resCom.json();
         const misComisiones = Array.isArray(comList)
@@ -175,7 +190,6 @@ export default function HomePage() {
 
         if (misComisiones.length === 0) return;
 
-        // 3. Verificar cuáles tienen horario activo AHORA
         const dia = diaActual();
         const hora = horaActual();
 
@@ -191,17 +205,13 @@ export default function HomePage() {
               horaMenorIgual(h.horaDesde?.slice(0, 5), hora) &&
               horaMenorIgual(hora, h.horaHasta?.slice(0, 5))
             ) {
-              activas.push({
-                comision: com,
-                horario: h,
-              });
+              activas.push({ comision: com, horario: h });
             }
           }
         }
 
         if (activas.length === 0) return;
 
-        // 4. Verificar si ya registró hoy en cada clase activa
         const hoy = new Date().toISOString().split("T")[0];
         const yaRegistradoHoy = {};
 
@@ -222,7 +232,6 @@ export default function HomePage() {
           }
         }
 
-        // Precargar yaRegistrado con los que ya tienen registro hoy en la DB
         if (Object.keys(yaRegistradoHoy).length > 0) {
           setYaRegistrado(yaRegistradoHoy);
         }
@@ -235,9 +244,6 @@ export default function HomePage() {
   }, [usuario, headers]);
 
   // ── Registrar presente del docente ───────────────────────────
-  // Usa POST /api/asistencias/docente-presente — endpoint dedicado sin QR.
-  // El JWT del docente es suficiente autenticación.
-  // El backend valida: titular de la comisión + horario activo + sin doble registro.
   async function registrarPresente(comisionId) {
     setRegistrando(true);
     setMsgPresente("");
@@ -266,10 +272,11 @@ export default function HomePage() {
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <svg className="h-6 w-6 animate-spin text-green-700" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-        </svg>
+        <Loader2
+          className="h-6 w-6 animate-spin"
+          style={{ color: "var(--color-primary)" }}
+          strokeWidth={1.75}
+        />
       </div>
     );
   }
@@ -280,30 +287,57 @@ export default function HomePage() {
   const pares = itemsVisibles.length % 2 !== 0 ? itemsVisibles.slice(0, -1) : itemsVisibles;
   const huerfano = itemsVisibles.length % 2 !== 0 ? [itemsVisibles[itemsVisibles.length - 1]] : [];
 
-  // ¿Hay clases activas que todavía no confirmó ni descartó?
   const clasesParaMostrar = clasesActivas.filter(c => !yaRegistrado[c.comision.comisionId]);
   const mostrarAviso = usuario.rol === "docente" && clasesParaMostrar.length > 0 && !descartado;
+
+  const primerNombre = usuario.nombre?.split(" ")[0] || "";
 
   return (
     <div className="flex flex-1 flex-col items-center justify-start px-4 py-8 sm:px-6 sm:py-12">
       <div className="w-full max-w-2xl">
 
-        {/* Bienvenida */}
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">
-            Hola, {usuario.nombre.split(" ")[0]} 👋
+        {/* ── Bienvenida ── */}
+        <div className="mb-8 text-center">
+          <h1
+            className="text-2xl font-medium sm:text-3xl"
+            style={{ color: "var(--color-text-primary)" }}
+          >
+            Hola, {primerNombre}
           </h1>
-          <p className="mt-2 text-sm text-gray-500">¿Qué querés hacer hoy?</p>
+          <p
+            className="mt-2 text-sm"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
+            ¿Qué querés hacer hoy?
+          </p>
         </div>
 
         {/* ── Aviso de clase activa para el DOCENTE ── */}
         {mostrarAviso && (
-          <div className="mb-6 overflow-hidden rounded-2xl border border-green-300 bg-green-50 shadow-sm">
-            {/* Header del aviso */}
-            <div className="flex items-center justify-between border-b border-green-200 bg-green-100 px-5 py-3">
+          <div
+            className="mb-6 overflow-hidden rounded-2xl border"
+            style={{
+              borderColor: "var(--color-primary-ring)",
+              background: "var(--color-primary-subtle)",
+            }}
+          >
+            <div
+              className="flex items-center justify-between border-b px-5 py-3"
+              style={{
+                borderColor: "var(--color-primary-ring)",
+                background: "var(--color-primary-light)",
+              }}
+            >
               <div className="flex items-center gap-2">
-                <span className="text-lg">🕐</span>
-                <span className="text-sm font-semibold text-green-900">
+                <Clock
+                  className="h-4 w-4"
+                  style={{ color: "var(--color-primary-active)" }}
+                  strokeWidth={1.75}
+                />
+                <span
+                  className="text-sm font-medium"
+                  style={{ color: "var(--color-primary-active)" }}
+                >
                   {clasesParaMostrar.length === 1
                     ? "Tenés una clase en curso ahora"
                     : `Tenés ${clasesParaMostrar.length} clases en curso ahora`}
@@ -311,15 +345,18 @@ export default function HomePage() {
               </div>
               <button
                 onClick={() => setDescartado(true)}
-                className="text-green-600 hover:text-green-800 text-xs"
+                className="rounded-full p-1 transition hover:bg-white/50"
                 aria-label="Cerrar aviso"
+                style={{ color: "var(--color-primary-active)" }}
               >
-                ✕
+                <X className="h-4 w-4" strokeWidth={1.75} />
               </button>
             </div>
 
-            {/* Una tarjeta por cada clase activa */}
-            <div className="divide-y divide-green-200">
+            <div
+              className="divide-y"
+              style={{ borderColor: "var(--color-primary-ring)" }}
+            >
               {clasesParaMostrar.map(({ comision, horario }) => {
                 const comId = comision.comisionId;
                 const registrado = yaRegistrado[comId];
@@ -331,29 +368,56 @@ export default function HomePage() {
                   <div key={comId} className="px-5 py-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p className="text-sm font-bold text-green-900">{materia}</p>
-                        <p className="mt-0.5 text-xs text-green-700">
+                        <p
+                          className="text-sm font-medium"
+                          style={{ color: "var(--color-text-primary)" }}
+                        >
+                          {materia}
+                        </p>
+                        <p
+                          className="mt-0.5 text-xs"
+                          style={{ color: "var(--color-text-secondary)" }}
+                        >
                           {comision.cod_comision} · {desde} – {hasta}
                         </p>
                         {horario.aula && (
-                          <p className="mt-0.5 text-xs text-green-600">
-                            🚪 {horario.aula.sector}-{horario.aula.numero}
+                          <p
+                            className="mt-1 flex items-center gap-1 text-xs"
+                            style={{ color: "var(--color-text-secondary)" }}
+                          >
+                            <DoorOpen className="h-3 w-3" strokeWidth={1.75} />
+                            {horario.aula.sector}-{horario.aula.numero}
                             {horario.aula.edificio?.nombre && ` · ${horario.aula.edificio.nombre}`}
                           </p>
                         )}
                       </div>
 
                       {registrado ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-green-200 px-3 py-1.5 text-xs font-semibold text-green-800">
-                          ✅ Presente registrado
+                        <span
+                          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
+                          style={{
+                            background: "var(--color-primary-light)",
+                            color: "var(--color-primary-active)",
+                          }}
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+                          Presente registrado
                         </span>
                       ) : (
                         <button
                           onClick={() => registrarPresente(comId)}
                           disabled={registrando}
-                          className="rounded-xl bg-green-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-800 disabled:opacity-50 shrink-0"
+                          className="inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+                          style={{ background: "var(--color-primary)" }}
                         >
-                          {registrando ? "Registrando..." : "Registrar mi presencia"}
+                          {registrando ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} />
+                              Registrando…
+                            </>
+                          ) : (
+                            "Registrar mi presencia"
+                          )}
                         </button>
                       )}
                     </div>
@@ -362,12 +426,19 @@ export default function HomePage() {
               })}
             </div>
 
-            {/* Mensaje resultado */}
             {msgPresente && (
-              <div className={`px-5 py-3 text-sm font-medium border-t border-green-200 ${msgPresente.startsWith("✅")
-                  ? "text-green-800 bg-green-100"
-                  : "text-red-700 bg-red-50"
-                }`}>
+              <div
+                className="border-t px-5 py-3 text-sm font-medium"
+                style={{
+                  borderColor: "var(--color-primary-ring)",
+                  background: msgPresente.startsWith("✅")
+                    ? "var(--color-success-bg)"
+                    : "var(--color-error-bg)",
+                  color: msgPresente.startsWith("✅")
+                    ? "var(--color-success)"
+                    : "var(--color-error)",
+                }}
+              >
                 {msgPresente}
               </div>
             )}
@@ -392,39 +463,80 @@ export default function HomePage() {
   );
 }
 
+/**
+ * MenuCard — Tarjeta del dashboard.
+ *
+ * Dos variantes:
+ *  - primary: fondo verde UNAHUR (acción principal)
+ *  - secondary: fondo blanco con círculo verde claro (acciones frecuentes)
+ */
 function MenuCard({ item, rol }) {
   const isPrimary = item.variant === "primary" &&
     (rol === "alumno" ? true : item.href !== "/leer-qr");
 
-  // Si el item define etiquetas por rol, usamos esas.
-  // Si no, caemos a las genéricas.
   const labelMostrado = item.labelPorRol?.[rol] ?? item.label;
   const descripcionMostrada = item.descripcionPorRol?.[rol] ?? item.description;
+  const Icon = item.Icon;
+
+  if (isPrimary) {
+    return (
+      <Link
+        href={item.href}
+        className="group flex items-start gap-4 rounded-2xl p-5 transition hover:opacity-95 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style={{
+          background: "var(--color-primary)",
+          boxShadow: "var(--shadow-sm)",
+        }}
+      >
+        <span
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+          style={{ background: "rgba(255,255,255,0.18)" }}
+        >
+          <Icon className="h-5 w-5 text-white" strokeWidth={1.75} />
+        </span>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-sm font-medium leading-tight text-white">
+            {labelMostrado}
+          </span>
+          <span className="text-xs leading-snug text-white/75">
+            {descripcionMostrada}
+          </span>
+        </div>
+      </Link>
+    );
+  }
 
   return (
     <Link
       href={item.href}
-      className={`
-        group flex items-start gap-4 rounded-2xl border p-5 transition
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2
-        ${isPrimary
-          ? "border-green-800 bg-green-800 hover:bg-green-700"
-          : "border-green-200 bg-white hover:border-green-400 hover:shadow-sm"
-        }
-      `}
+      className="group flex items-start gap-4 rounded-2xl border p-5 transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      style={{
+        background: "var(--color-surface)",
+        borderColor: "var(--color-border)",
+        boxShadow: "var(--shadow-sm)",
+      }}
     >
       <span
-        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl ${isPrimary ? "bg-green-700" : "bg-green-50"
-          }`}
-        aria-hidden="true"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition group-hover:scale-105"
+        style={{ background: "var(--color-primary-light)" }}
       >
-        {item.icon}
+        <Icon
+          className="h-5 w-5"
+          style={{ color: "var(--color-primary)" }}
+          strokeWidth={1.75}
+        />
       </span>
       <div className="flex flex-col gap-0.5">
-        <span className={`text-sm font-semibold leading-tight ${isPrimary ? "text-white" : "text-gray-800"}`}>
+        <span
+          className="text-sm font-medium leading-tight"
+          style={{ color: "var(--color-text-primary)" }}
+        >
           {labelMostrado}
         </span>
-        <span className={`text-xs leading-snug ${isPrimary ? "text-green-200" : "text-gray-500"}`}>
+        <span
+          className="text-xs leading-snug"
+          style={{ color: "var(--color-text-secondary)" }}
+        >
           {descripcionMostrada}
         </span>
       </div>

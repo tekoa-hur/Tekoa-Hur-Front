@@ -246,15 +246,20 @@ function AsistenciaContenido() {
                 );
                 const horariosComision = comData?.horarios ?? [];
 
-                const estudiantesMatric = comData?.estudiantes ?? [];
-                const alumnosFormateados = estudiantesMatric.map(e => ({
-                    id: e.dni,
-                    dni: e.dni,
-                    apellido: e.nombre_apellido,
-                }));
+                // ── VISTA DE DOCENTES ──
+                // En vez de mostrar estudiantes, mostramos al profesor titular
+                // de la comisión (viene en comData.profesor).
+                const profesorTitular = comData?.profesor;
+                const alumnosFormateados = profesorTitular
+                    ? [{
+                        id: profesorTitular.dni,
+                        dni: profesorTitular.dni,
+                        apellido: profesorTitular.nombre_apellido,
+                    }]
+                    : [];
 
                 const soloEstudiantes = registros.filter(
-                    r => r.tipoUsuario === "ESTUDIANTE" && estaEnPeriodo(r.fecha, periodoData)
+                    r => r.tipoUsuario === "PROFESOR" && estaEnPeriodo(r.fecha, periodoData)
                 );
 
                 const fechasFeriados = feriadosData
@@ -350,9 +355,9 @@ if (Array.isArray(diasSinClaseComision) && diasSinClaseComision.length > 0) {
                 {/* Encabezado */}
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Asistencias</h1>
+                        <h1 className="text-2xl font-bold text-gray-800">Asistencias de docentes</h1>
                         <p className="mt-1 text-sm text-gray-500">
-                            {isDocente ? "Asistencia de tus alumnos por comisión" : "Historial de asistencia por comisión"}
+                            {isDocente ? "Tu asistencia como docente por comisión" : "Historial de asistencia docente por comisión"}
                         </p>
                     </div>
 
@@ -377,17 +382,17 @@ if (Array.isArray(diasSinClaseComision) && diasSinClaseComision.length > 0) {
                                     {/* El selector de visualización Alumnos/Docentes sólo tiene sentido para el Administrador */}
                                     {isAdmin && (
                                         <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
-                                            <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-green-800 shadow-sm">
-                                                <GraduationCap className="h-4 w-4" strokeWidth={1.75} />
-                                                Estudiantes
-                                            </div>
                                             <button
-                                                onClick={() => router.push("/asistencia-docente")}
+                                                onClick={() => router.push("/asistencia")}
                                                 className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-500 transition hover:text-gray-700"
                                             >
+                                                <GraduationCap className="h-4 w-4" strokeWidth={1.75} />
+                                                Estudiantes
+                                            </button>
+                                            <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-green-800 shadow-sm">
                                                 <UserSquare2 className="h-4 w-4" strokeWidth={1.75} />
                                                 Docentes
-                                            </button>
+                                            </div>
                                         </div>
                                     )}
 

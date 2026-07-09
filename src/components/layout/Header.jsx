@@ -1,43 +1,51 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import {
+  ChevronDown,
+  LogOut,
+  User,
+  Sun,
+  Moon,
+} from "lucide-react";
 
+/**
+ * Header — Barra superior institucional.
+ *
+ * Diseño alineado con la identidad visual de UNAHUR:
+ *  - Verde institucional #558B2F
+ *  - Iconos con lucide-react (trazo fino, monocromáticos)
+ *  - Badge de rol con estado activo
+ *  - Menú de usuario con avatar
+ */
 export default function Header() {
-  const router              = useRouter();
+  const router = useRouter();
   const { usuario, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const menuRef = useRef(null);
 
   const rolLabel = {
-    alumno:        "Alumno",
-    docente:       "Docente",
+    alumno: "Alumno",
+    docente: "Docente",
     administrador: "Área Académica",
   };
 
-  const rolColor = {
-    alumno:        "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
-    docente:       "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
-    administrador: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
-  };
-
-  // Inicializar estado del Dark Mode leyendo el DOM / LocalStorage
+  // ── Dark mode ──
   useEffect(() => {
-    const isDark = document.documentElement.classList.contains("dark") || 
-                   localStorage.getItem("theme") === "dark";
+    const isDark =
+      document.documentElement.classList.contains("dark") ||
+      localStorage.getItem("theme") === "dark";
     if (isDark) {
       document.documentElement.classList.add("dark");
       setDarkMode(true);
-    } else {
-      document.documentElement.classList.remove("dark");
-      setDarkMode(false);
     }
   }, []);
 
-  // Alternar Modo Oscuro
   const toggleDarkMode = () => {
     if (darkMode) {
       document.documentElement.classList.remove("dark");
@@ -50,6 +58,7 @@ export default function Header() {
     }
   };
 
+  // ── Cerrar menú al clickear afuera ──
   useEffect(() => {
     function handleClickOutside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -60,111 +69,138 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  function handleLogout() {
+  const handleLogout = () => {
     logout();
     router.push("/login");
-  }
+  };
+
+  const nombreInicial =
+    usuario?.nombre_apellido?.charAt(0)?.toUpperCase() ||
+    rolLabel[usuario?.rol]?.charAt(0) ||
+    "U";
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-green-900 dark:bg-zinc-950 shadow-md border-b dark:border-zinc-800 transition-colors">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
+    <header
+      className="sticky top-0 z-40 border-b border-white/10"
+      style={{ background: "var(--color-primary)" }}
+    >
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
 
-        {/* Logo + Nombre */}
-        <Link
-          href="/"
-          className="flex items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-green-900"
-          aria-label="Ir al inicio — Tekoá-Hur"
-        >
-          <img
-            src="/logo.png"
-            alt="Logo Tekoá-Hur"
-            width={32} height={32}
-            className="h-8 w-8 flex-shrink-0 rounded-full bg-white object-contain p-0.5"
-          />
-        <span
-            className="text-sm font-semibold sm:text-base"
-            style={{ color: "#FFFFFF" }}
-          >
-            Tekoá-Hur
-          </span>
+        {/* ── Logo + Título ── */}
+        <Link href="/" className="flex items-center gap-3 transition hover:opacity-90">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white p-1.5 shadow-sm">
+            <Image
+              src="/unahur-iso.png"
+              alt="Logo UNAHUR"
+              width={28}
+              height={28}
+              className="object-contain"
+              priority
+            />
+          </div>
+          <div>
+            <div className="text-base font-medium leading-tight text-white">
+              Tekoá-Hur
+            </div>
+            <div className="text-xs leading-tight text-white/70">
+              Sistema de gestión académica
+            </div>
+          </div>
         </Link>
 
-        {/* Derecha */}
-        <div className="flex items-center gap-2">
+        {/* ── Área derecha: rol + menú usuario ── */}
+        {usuario && (
+          <div className="flex items-center gap-3">
 
-          {/* Selector de modo oscuro */}
-          <button
-            onClick={toggleDarkMode}
-            className="p-2 rounded-lg text-green-100 hover:bg-green-800 dark:text-zinc-400 dark:hover:bg-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-white transition"
-            aria-label={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-          >
-            {darkMode ? (
-              <span className="text-lg">☀️</span>
-            ) : (
-              <span className="text-lg">🌙</span>
-            )}
-          </button>
+            {/* Badge de rol */}
+            <div className="hidden items-center gap-2 rounded-full bg-white/10 px-3 py-1 sm:flex">
+              <div className="h-2 w-2 rounded-full bg-lime-300" />
+              <span className="text-xs font-medium text-white">
+                {rolLabel[usuario.rol] || usuario.rol}
+              </span>
+            </div>
 
-          {usuario ? (
-            <>
-              {/* Badge de rol — solo visible en pantallas medianas+ */}
-              <div className={`hidden items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium sm:flex ${rolColor[usuario.rol] ?? "bg-gray-100 text-gray-700"}`}>
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-current opacity-60" aria-hidden="true" />
-                {rolLabel[usuario.rol] ?? usuario.rol}
-              </div>
+            {/* Toggle dark mode */}
+            <button
+              onClick={toggleDarkMode}
+              className="hidden h-9 w-9 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white sm:flex"
+              aria-label="Cambiar tema"
+              title={darkMode ? "Modo claro" : "Modo oscuro"}
+            >
+              {darkMode ? (
+                <Sun className="h-4 w-4" strokeWidth={1.75} />
+              ) : (
+                <Moon className="h-4 w-4" strokeWidth={1.75} />
+              )}
+            </button>
 
-              {/* Dropdown de usuario */}
-              <div className="relative" ref={menuRef}>
-                <button
-                  onClick={() => setMenuOpen(prev => !prev)}
-                  className="flex items-center gap-1.5 rounded-lg border border-green-700 bg-green-800 dark:border-zinc-800 dark:bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-green-700 dark:hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                  aria-expanded={menuOpen}
-                  aria-haspopup="true"
+            {/* Menú de usuario */}
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-white transition hover:bg-white/10"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-xs font-medium">
+                  {nombreInicial}
+                </div>
+                <span className="hidden text-sm sm:inline">
+                  {usuario.nombre_apellido || rolLabel[usuario.rol]}
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${
+                    menuOpen ? "rotate-180" : ""
+                  }`}
+                  strokeWidth={1.75}
+                />
+              </button>
+
+              {/* Dropdown */}
+              {menuOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl border shadow-lg"
+                  style={{
+                    background: "var(--color-surface)",
+                    borderColor: "var(--color-border)",
+                  }}
                 >
-                  <span className="sm:hidden">
-                    {usuario.rol === "alumno" ? "🎓" : usuario.rol === "docente" ? "👨‍🏫" : "🔑"}
-                  </span>
-                  <span className="hidden sm:inline" style={{ color: "#FFFFFF" }}>{usuario.nombre.split(" ")[0]}</span>
-                  <svg className={`h-3 w-3 flex-shrink-0 transition-transform ${menuOpen ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd"  style={{ color: "#FFFFFF" }} d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                  </svg>
-                </button>
-
-                {/* Dropdown */}
-                {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg transition-colors">
-                    <div className="border-b border-[var(--color-border)] px-4 py-3">
-                      <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{usuario.nombre}</p>
-                      <p className="text-xs text-[var(--color-text-muted)]">DNI: {usuario.dni}</p>
-                      <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium sm:hidden ${rolColor[usuario.rol]}`}>
-                        {rolLabel[usuario.rol]}
-                      </span>
-                    </div>
-
-                    <Link href="/perfil" onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-alt)]">
-                      <span aria-hidden="true">👤</span> Mi perfil
-                    </Link>
-                    <Link href="/perfil" onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-alt)]">
-                      <span aria-hidden="true">🔑</span> Cambiar contraseña
-                    </Link>
-                    <div className="mt-1 border-t border-[var(--color-border)]" />
-                    <button onClick={handleLogout}
-                      className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-950/30">
-                      <span aria-hidden="true">🚪</span> Cerrar sesión
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <Link href="/login"
-              className="rounded border border-green-700 bg-green-800 dark:border-zinc-800 dark:bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-green-700 dark:hover:bg-zinc-800">
-              Ingresar
-            </Link>
-          )}
-        </div>
+                  <Link
+                    href="/perfil"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm transition hover:bg-gray-50 dark:hover:bg-gray-800"
+                    style={{ color: "var(--color-text-primary)" }}
+                  >
+                    <User className="h-4 w-4" strokeWidth={1.75} />
+                    Mi perfil
+                  </Link>
+                  <button
+                    onClick={toggleDarkMode}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm transition hover:bg-gray-50 sm:hidden dark:hover:bg-gray-800"
+                    style={{ color: "var(--color-text-primary)" }}
+                  >
+                    {darkMode ? (
+                      <Sun className="h-4 w-4" strokeWidth={1.75} />
+                    ) : (
+                      <Moon className="h-4 w-4" strokeWidth={1.75} />
+                    )}
+                    {darkMode ? "Modo claro" : "Modo oscuro"}
+                  </button>
+                  <div
+                    className="border-t"
+                    style={{ borderColor: "var(--color-border)" }}
+                  />
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm transition hover:bg-red-50 dark:hover:bg-red-950/30"
+                    style={{ color: "var(--color-error)" }}
+                  >
+                    <LogOut className="h-4 w-4" strokeWidth={1.75} />
+                    Cerrar sesión
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );

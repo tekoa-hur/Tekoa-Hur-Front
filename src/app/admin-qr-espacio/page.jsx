@@ -4,6 +4,7 @@
 // app/admin-qr-espacio/page.jsx
 // ============================================================
 // Le permite al administrador:
+//   - Filtrar aulas por edificio
 //   - Generar el QR permanente de un aula (uno por aula a la vez)
 //   - Ver todos los QRs activos en una lista
 //   - Desactivar QRs existentes
@@ -15,6 +16,19 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { BACK_URL, getAuthHeaders } from "@/config/api";
 import QRCode from "react-qr-code";
+import {
+  Building2,
+  DoorOpen,
+  QrCode,
+  Download,
+  AlertTriangle,
+  AlertCircle,
+  Loader2,
+  CheckCircle2,
+  Trash2,
+  Inbox,
+  X,
+} from "lucide-react";
 
 export default function AdminQrEspacioPage() {
   return (
@@ -31,6 +45,9 @@ function AdminQrEspacioContenido() {
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState("");
 
+  // ── NUEVO: Filtro por edificio ──────────────────────────
+  const [edificioFiltro, setEdificioFiltro] = useState("");
+
   // ── Estado: aula seleccionada y QR generado ─────────────
   const [aulaSeleccionada, setAulaSeleccionada] = useState("");
   const [qrGenerado, setQrGenerado] = useState(null);
@@ -40,6 +57,9 @@ function AdminQrEspacioContenido() {
   // ── Estado: modal de confirmación de desactivar ─────────
   const [qrADesactivar, setQrADesactivar] = useState(null);
   const [desactivando, setDesactivando] = useState(false);
+
+  // ── NUEVO: Filtro por edificio para la LISTA de QRs activos ─
+  const [edificioFiltroLista, setEdificioFiltroLista] = useState("");
 
   const qrRef = useRef(null);
 
@@ -74,6 +94,41 @@ function AdminQrEspacioContenido() {
     cargarDatos();
   }, [cargarDatos]);
 
+  // ── NUEVO: Extraer edificios únicos de las aulas ───────
+  // Uso Map para deduplicar por edificioId. Filtro nulls.
+  const edificios = useMemo(() => {
+    const mapa = new Map();
+    for (const a of aulas) {
+      if (a.edificio?.edificioId && !mapa.has(a.edificio.edificioId)) {
+        mapa.set(a.edificio.edificioId, a.edificio);
+      }
+    }
+    return Array.from(mapa.values()).sort((a, b) =>
+      a.nombre.localeCompare(b.nombre)
+    );
+  }, [aulas]);
+
+  // ── NUEVO: Aulas filtradas por edificio ─────────────────
+  const aulasFiltradas = useMemo(() => {
+    if (!edificioFiltro) return aulas;
+    return aulas.filter(
+      (a) => String(a.edificio?.edificioId) === String(edificioFiltro)
+    );
+  }, [aulas, edificioFiltro]);
+
+  // ── NUEVO: QRs filtrados por edificio (para la LISTA) ───
+  const qrsFiltrados = useMemo(() => {
+    if (!edificioFiltroLista) return qrsActivos;
+    return qrsActivos.filter(
+      (qr) => String(qr.edificio?.edificioId) === String(edificioFiltroLista)
+    );
+  }, [qrsActivos, edificioFiltroLista]);
+
+  // ── NUEVO: Al cambiar filtro de edificio, limpio aula seleccionada
+  useEffect(() => {
+    setAulaSeleccionada("");
+  }, [edificioFiltro]);
+
   // ── URL pública del QR (la que se codifica visualmente) ─
   const urlQR = useMemo(() => {
     if (!qrGenerado?.token) return "";
@@ -99,7 +154,7 @@ function AdminQrEspacioContenido() {
       if (!res.ok) return setGenError(data.error || data.message || "Error al generar.");
 
       setQrGenerado(data.espacioQR);
-      await cargarDatos(); // recargar la lista de activos
+      await cargarDatos();
     } catch {
       setGenError("Error de red.");
     } finally {
@@ -121,7 +176,6 @@ function AdminQrEspacioContenido() {
         setError(data.error || data.message || "Error al desactivar.");
       } else {
         await cargarDatos();
-        // Si era el que estaba mostrando, lo limpio
         if (qrGenerado?.espacioQrId === qrADesactivar.espacioQrId) {
           setQrGenerado(null);
         }
@@ -170,17 +224,35 @@ function AdminQrEspacioContenido() {
   // ════════════════════════════════════════════════════════
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6">
+      {/* ── Encabezado ── */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-green-900">QR de Aula (Espacio)</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <h1
+          className="text-2xl font-bold"
+          style={{ color: "var(--color-text-primary)" }}
+        >
+          QR de Aula (Espacio)
+        </h1>
+        <p
+          className="mt-1 text-sm"
+          style={{ color: "var(--color-text-secondary)" }}
+        >
           Generá un código QR permanente para pegar físicamente en cada aula.
           Cuando alguien lo escanee, verá la información del espacio.
         </p>
       </div>
 
+      {/* ── Error global ── */}
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+        <div
+          className="mb-4 flex items-start gap-2 rounded-lg border px-4 py-3 text-sm"
+          style={{
+            borderColor: "var(--color-error-bg)",
+            background: "var(--color-error-bg)",
+            color: "var(--color-error)",
+          }}
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
+          <span>{error}</span>
         </div>
       )}
 
@@ -188,69 +260,190 @@ function AdminQrEspacioContenido() {
         {/* ════════════════════════════════════════════════
             COLUMNA IZQUIERDA: Generador
             ════════════════════════════════════════════════ */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-bold text-green-900">
-            Generar nuevo QR
-          </h2>
+        <div
+          className="rounded-2xl border p-5 shadow-sm"
+          style={{
+            background: "var(--color-surface)",
+            borderColor: "var(--color-border)",
+          }}
+        >
+          <div className="mb-4 flex items-center gap-2">
+            <QrCode
+              className="h-5 w-5"
+              style={{ color: "var(--color-primary)" }}
+              strokeWidth={1.75}
+            />
+            <h2
+              className="text-lg font-semibold"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              Generar nuevo QR
+            </h2>
+          </div>
 
-          <label className="mb-1 block text-sm font-semibold text-gray-700">
+          {/* ── NUEVO: Filtro por edificio ── */}
+          <label
+            className="mb-1 flex items-center gap-1.5 text-sm font-medium"
+            style={{ color: "var(--color-text-primary)" }}
+          >
+            <Building2 className="h-4 w-4" strokeWidth={1.75} />
+            Edificio
+          </label>
+          <select
+            value={edificioFiltro}
+            onChange={(e) => setEdificioFiltro(e.target.value)}
+            disabled={generando || loadingData}
+            className="mb-4 w-full rounded-lg border px-3 py-2 text-sm transition focus:outline-none focus:ring-2 disabled:opacity-50"
+            style={{
+              borderColor: "var(--color-border)",
+              background: "var(--color-surface)",
+              color: "var(--color-text-primary)",
+              "--tw-ring-color": "var(--color-primary-ring)",
+            }}
+          >
+            <option value="">Todos los edificios</option>
+            {edificios.map((e) => (
+              <option key={e.edificioId} value={e.edificioId}>
+                {e.nombre}
+              </option>
+            ))}
+          </select>
+
+          {/* ── Aula ── */}
+          <label
+            className="mb-1 flex items-center gap-1.5 text-sm font-medium"
+            style={{ color: "var(--color-text-primary)" }}
+          >
+            <DoorOpen className="h-4 w-4" strokeWidth={1.75} />
             Aula
           </label>
           <select
             value={aulaSeleccionada}
             onChange={(e) => setAulaSeleccionada(e.target.value)}
             disabled={generando || loadingData}
-            className="mb-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-700 focus:outline-none focus:ring-1 focus:ring-green-700"
+            className="mb-3 w-full rounded-lg border px-3 py-2 text-sm transition focus:outline-none focus:ring-2 disabled:opacity-50"
+            style={{
+              borderColor: "var(--color-border)",
+              background: "var(--color-surface)",
+              color: "var(--color-text-primary)",
+              "--tw-ring-color": "var(--color-primary-ring)",
+            }}
           >
-            <option value="">— Seleccioná un aula —</option>
-            {aulas.map((a) => (
+            <option value="">
+              {edificioFiltro
+                ? `— Seleccioná un aula (${aulasFiltradas.length} disponibles) —`
+                : "— Seleccioná un aula —"}
+            </option>
+            {aulasFiltradas.map((a) => (
               <option key={a.aulaId} value={a.aulaId}>
                 {a.sector}-{a.numero}
+                {a.edificio?.nombre ? ` · ${a.edificio.nombre}` : ""}
               </option>
             ))}
           </select>
 
-          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            ⚠️ Si el aula ya tenía un QR activo, generar uno nuevo lo desactiva automáticamente.
+          {/* ── Aviso ── */}
+          <div
+            className="mb-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs"
+            style={{
+              borderColor: "var(--color-warning-bg)",
+              background: "var(--color-warning-bg)",
+              color: "var(--color-warning)",
+            }}
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
+            <span>
+              Si el aula ya tenía un QR activo, generar uno nuevo lo desactiva automáticamente.
+            </span>
           </div>
 
+          {/* ── Botón generar ── */}
           <button
             onClick={handleGenerar}
             disabled={generando || !aulaSeleccionada}
-            className="w-full rounded-lg bg-green-700 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-green-800 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ background: "var(--color-primary)" }}
           >
-            {generando ? "Generando..." : "Generar QR"}
+            {generando ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} />
+                Generando…
+              </>
+            ) : (
+              <>
+                <QrCode className="h-4 w-4" strokeWidth={1.75} />
+                Generar QR
+              </>
+            )}
           </button>
 
+          {/* ── Error de generación ── */}
           {genError && (
-            <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {genError}
-            </p>
+            <div
+              className="mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm"
+              style={{
+                borderColor: "var(--color-error-bg)",
+                background: "var(--color-error-bg)",
+                color: "var(--color-error)",
+              }}
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
+              <span>{genError}</span>
+            </div>
           )}
 
           {/* ── QR generado ── */}
           {qrGenerado && (
-            <div className="mt-5 rounded-xl border border-green-300 bg-green-50 p-4">
-              <p className="mb-2 text-sm font-semibold text-green-900">
-                ✓ QR generado para {nombreAula(qrGenerado.aulaId)}
-              </p>
+            <div
+              className="mt-5 rounded-xl border p-4"
+              style={{
+                borderColor: "var(--color-primary-ring)",
+                background: "var(--color-primary-subtle)",
+              }}
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <CheckCircle2
+                  className="h-4 w-4"
+                  style={{ color: "var(--color-primary-active)" }}
+                  strokeWidth={1.75}
+                />
+                <p
+                  className="text-sm font-semibold"
+                  style={{ color: "var(--color-primary-active)" }}
+                >
+                  QR generado para {nombreAula(qrGenerado.aulaId)}
+                </p>
+              </div>
 
               <div
                 ref={qrRef}
-                className="mb-3 flex items-center justify-center rounded-lg bg-white p-4"
+                className="mb-3 flex items-center justify-center rounded-lg p-4"
+                style={{ background: "#ffffff" }}
               >
                 <QRCode value={urlQR} size={220} />
               </div>
 
-              <p className="mb-3 break-all rounded bg-white p-2 text-xs text-gray-600">
+              <p
+                className="mb-3 break-all rounded p-2 text-xs"
+                style={{
+                  background: "var(--color-surface)",
+                  color: "var(--color-text-secondary)",
+                }}
+              >
                 {urlQR}
               </p>
 
               <button
                 onClick={handleDescargar}
-                className="w-full rounded-lg border border-green-700 bg-white px-4 py-2 text-sm font-medium text-green-700 transition hover:bg-green-100"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-white/50"
+                style={{
+                  borderColor: "var(--color-primary)",
+                  background: "var(--color-surface)",
+                  color: "var(--color-primary)",
+                }}
               >
-                📥 Descargar PNG
+                <Download className="h-4 w-4" strokeWidth={1.75} />
+                Descargar PNG
               </button>
             </div>
           )}
@@ -259,44 +452,130 @@ function AdminQrEspacioContenido() {
         {/* ════════════════════════════════════════════════
             COLUMNA DERECHA: Lista de QRs activos
             ════════════════════════════════════════════════ */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-bold text-green-900">
-            QRs activos ({qrsActivos.length})
-          </h2>
+        <div
+          className="rounded-2xl border p-5 shadow-sm"
+          style={{
+            background: "var(--color-surface)",
+            borderColor: "var(--color-border)",
+          }}
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <QrCode
+                className="h-5 w-5"
+                style={{ color: "var(--color-primary)" }}
+                strokeWidth={1.75}
+              />
+              <h2
+                className="text-lg font-semibold"
+                style={{ color: "var(--color-text-primary)" }}
+              >
+                QRs activos
+              </h2>
+            </div>
+            <span
+              className="rounded-full px-2.5 py-0.5 text-xs font-medium"
+              style={{
+                background: "var(--color-primary-light)",
+                color: "var(--color-primary-active)",
+              }}
+            >
+              {qrsFiltrados.length}
+              {edificioFiltroLista ? ` de ${qrsActivos.length}` : ""}
+            </span>
+          </div>
+
+          {/* ── NUEVO: Filtro por edificio para la lista ── */}
+          <div className="mb-4">
+            <label
+              className="mb-1 flex items-center gap-1.5 text-sm font-medium"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              <Building2 className="h-4 w-4" strokeWidth={1.75} />
+              Filtrar por edificio
+            </label>
+            <select
+              value={edificioFiltroLista}
+              onChange={(e) => setEdificioFiltroLista(e.target.value)}
+              disabled={loadingData}
+              className="w-full rounded-lg border px-3 py-2 text-sm transition focus:outline-none focus:ring-2 disabled:opacity-50"
+              style={{
+                borderColor: "var(--color-border)",
+                background: "var(--color-surface)",
+                color: "var(--color-text-primary)",
+                "--tw-ring-color": "var(--color-primary-ring)",
+              }}
+            >
+              <option value="">Todos los edificios</option>
+              {edificios.map((e) => (
+                <option key={e.edificioId} value={e.edificioId}>
+                  {e.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {loadingData ? (
             <div className="flex justify-center py-10">
-              <svg className="h-6 w-6 animate-spin text-green-700" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>
+              <Loader2
+                className="h-6 w-6 animate-spin"
+                style={{ color: "var(--color-primary)" }}
+                strokeWidth={1.75}
+              />
             </div>
-          ) : qrsActivos.length === 0 ? (
-            <p className="py-8 text-center text-sm text-gray-500">
-              No hay QRs activos. Generá uno seleccionando un aula.
-            </p>
+          ) : qrsFiltrados.length === 0 ? (
+            <div
+              className="flex flex-col items-center gap-2 py-10 text-center"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              <Inbox className="h-8 w-8" strokeWidth={1.5} />
+              <p className="text-sm">
+                {edificioFiltroLista
+                  ? "No hay QRs activos en este edificio."
+                  : "No hay QRs activos. Generá uno seleccionando un aula."}
+              </p>
+            </div>
           ) : (
-            <div className="max-h-[500px] space-y-2 overflow-y-auto">
-              {qrsActivos.map((qr) => (
+            <div className="max-h-[500px] space-y-2 overflow-y-auto pr-1">
+              {qrsFiltrados.map((qr) => (
                 <div
                   key={qr.espacioQrId}
-                  className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2"
+                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 transition hover:shadow-sm"
+                  style={{
+                    borderColor: "var(--color-border)",
+                    background: "var(--color-surface)",
+                  }}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-green-900">
+                    <p
+                      className="text-sm font-semibold"
+                      style={{ color: "var(--color-text-primary)" }}
+                    >
                       {qr.aula?.sector}-{qr.aula?.numero}
                     </p>
-                    <p className="truncate text-xs text-gray-500">
+                    <p
+                      className="truncate text-xs"
+                      style={{ color: "var(--color-text-secondary)" }}
+                    >
                       {qr.edificio?.nombre || "—"}
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p
+                      className="text-xs"
+                      style={{ color: "var(--color-text-muted)" }}
+                    >
                       {new Date(qr.createdAt).toLocaleString("es-AR")}
                     </p>
                   </div>
                   <button
                     onClick={() => setQrADesactivar(qr)}
-                    className="ml-2 rounded-lg border border-red-200 px-3 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                    className="ml-2 flex items-center gap-1 rounded-lg border px-3 py-1 text-xs font-medium transition hover:opacity-90"
+                    style={{
+                      borderColor: "var(--color-error)",
+                      color: "var(--color-error)",
+                      background: "var(--color-surface)",
+                    }}
                   >
+                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                     Desactivar
                   </button>
                 </div>
@@ -311,36 +590,88 @@ function AdminQrEspacioContenido() {
           ════════════════════════════════════════════════════ */}
       {qrADesactivar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
-            <div className="border-b border-gray-200 px-6 py-4">
-              <h3 className="text-lg font-bold text-red-700">Desactivar QR</h3>
+          <div
+            className="w-full max-w-md rounded-2xl shadow-2xl"
+            style={{ background: "var(--color-surface)" }}
+          >
+            <div
+              className="flex items-center justify-between border-b px-6 py-4"
+              style={{ borderColor: "var(--color-border)" }}
+            >
+              <div className="flex items-center gap-2">
+                <AlertTriangle
+                  className="h-5 w-5"
+                  style={{ color: "var(--color-error)" }}
+                  strokeWidth={1.75}
+                />
+                <h3
+                  className="text-lg font-semibold"
+                  style={{ color: "var(--color-error)" }}
+                >
+                  Desactivar QR
+                </h3>
+              </div>
+              <button
+                onClick={() => setQrADesactivar(null)}
+                disabled={desactivando}
+                className="rounded-full p-1 transition hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-800"
+                aria-label="Cerrar"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                <X className="h-4 w-4" strokeWidth={1.75} />
+              </button>
             </div>
             <div className="px-6 py-5">
-              <p className="text-sm text-gray-700">
+              <p
+                className="text-sm"
+                style={{ color: "var(--color-text-primary)" }}
+              >
                 ¿Estás seguro de desactivar el QR de{" "}
                 <strong>
                   {qrADesactivar.aula?.sector}-{qrADesactivar.aula?.numero}
                 </strong>
                 ?
               </p>
-              <p className="mt-2 text-xs text-gray-500">
+              <p
+                className="mt-2 text-xs"
+                style={{ color: "var(--color-text-muted)" }}
+              >
                 El QR físico dejará de funcionar al escanearse. Esta acción no se puede deshacer.
               </p>
             </div>
-            <div className="flex justify-end gap-2 border-t border-gray-200 px-6 py-4">
+            <div
+              className="flex justify-end gap-2 border-t px-6 py-4"
+              style={{ borderColor: "var(--color-border)" }}
+            >
               <button
                 onClick={() => setQrADesactivar(null)}
                 disabled={desactivando}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                className="rounded-lg border px-4 py-2 text-sm font-medium transition disabled:opacity-50"
+                style={{
+                  borderColor: "var(--color-border-strong)",
+                  color: "var(--color-text-primary)",
+                  background: "var(--color-surface)",
+                }}
               >
                 Cancelar
               </button>
               <button
                 onClick={handleDesactivar}
                 disabled={desactivando}
-                className="rounded-lg bg-red-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+                style={{ background: "var(--color-error)" }}
               >
-                {desactivando ? "Desactivando..." : "Sí, desactivar"}
+                {desactivando ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} />
+                    Desactivando…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                    Sí, desactivar
+                  </>
+                )}
               </button>
             </div>
           </div>
