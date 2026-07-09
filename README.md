@@ -1,3 +1,9 @@
+# 🌱 Tekoa-Hur-Front
+
+Sistema académico desarrollado como parte de la tesina en la **Universidad Nacional de Hurlingham (UNAHUR)**.  
+Incluye gestión de estudiantes, materias, profesores y asistencia, con documentación interactiva vía **Swagger**.
+
+---
 ## Configuración del entorno
 
 Antes de ejecutar el proyecto por primera vez, es necesario crear el archivo de variables de entorno.
@@ -56,6 +62,8 @@ Contiene los componentes reutilizables de la interfaz.
 * Separar UI de lógica de navegación
 * Facilitar mantenimiento y escalabilidad
 
+### Coverage
+[![codecov](https://codecov.io/github/tekoa-hur/Tekoa-Hur-Front/graph/badge.svg?token=LNBKU6WAF2)](https://codecov.io/github/tekoa-hur/Tekoa-Hur-Front)
 
 ### /src/config
 Contiene configuraciones globales del frontend.
