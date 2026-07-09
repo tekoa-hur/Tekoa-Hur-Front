@@ -20,8 +20,15 @@ jobs:
       - name: Instalar dependencias
         run: npm install
 
-      - name: Ejecutar tests
-        run: npm run test -- --run
+      # Añadimos el flag --coverage para que Vitest genere el reporte
+      - name: Ejecutar tests con cobertura
+        run: npm run test -- --run --coverage
+
+      # El reporte se sube inmediatamente después de correr los tests en este mismo entorno
+      - name: Subir reporte a Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   build:
     needs: test
