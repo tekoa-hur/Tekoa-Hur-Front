@@ -21,6 +21,8 @@ function ImportarContenido() {
   const [estado,   setEstado]   = useState("idle");
   const [preview,  setPreview]  = useState(null);
   const [mensaje,  setMensaje]  = useState("");
+  // NUEVO: errores de aulas detectados en la validación previa
+  const [erroresAulas, setErroresAulas] = useState([]);
 
   function procesarArchivo(file) {
     if (!file) return;
@@ -61,6 +63,8 @@ function ImportarContenido() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? data?.message ?? "Error al previsualizar.");
       setPreview(data.resumen);
+      // NUEVO: guardar los errores de aulas para mostrarlos y bloquear el confirmar
+      setErroresAulas(Array.isArray(data.erroresAulas) ? data.erroresAulas : []);
       setEstado("preview_ok");
     } catch (err) {
       setEstado("error");
@@ -84,16 +88,46 @@ function ImportarContenido() {
         body: formData,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? data?.message ?? "Error al importar.");
+      if (!res.ok) {
+        // Manejo especial: si el backend devolvió errores de aulas,
+        // los mostramos formateados en pantalla.
+        if (Array.isArray(data?.erroresAulas) && data.erroresAulas.length > 0) {
+          setErroresAulas(data.erroresAulas);
+        }
+        throw new Error(data?.error ?? data?.message ?? "Error al importar.");
+      }
       const r = data.resultados ?? {};
       setEstado("success");
+
+      // NUEVO formato: cada entidad tiene { nuevos, actualizados, sinCambios }
+      // Ej: "Docentes: +2 nuevos / ~1 actualizados"
+      function resumen(label, obj) {
+        if (!obj) return null;
+        const partes = [];
+        if (obj.nuevos) partes.push(`+${obj.nuevos} nuevos`);
+        if (obj.actualizados) partes.push(`~${obj.actualizados} actualizados`);
+        if (!partes.length && obj.sinCambios) return `${label}: sin cambios`;
+        if (!partes.length) return null;
+        return `${label}: ${partes.join(" / ")}`;
+      }
+
+      const items = [
+        resumen("Docentes", r.profesores),
+        resumen("Materias", r.materias),
+        resumen("Comisiones", r.comisiones),
+        resumen("Horarios", r.horarios),
+        resumen("Estudiantes", r.estudiantes),
+        resumen("Matrículas", r.matriculas),
+      ].filter(Boolean);
+
+      const extraUsuarios = r.usuariosCreados
+        ? ` · Usuarios creados: ${r.usuariosCreados}`
+        : "";
+
       setMensaje(
         `✓ Importación completada — ` +
-        `Edificios: ${r.edificios ?? 0}, Aulas: ${r.aulas ?? 0}, ` +
-        `Profesores: ${r.profesores ?? 0}, Materias: ${r.materias ?? 0}, ` +
-        `Comisiones: ${r.comisiones ?? 0}, Horarios: ${r.horarios ?? 0}, ` +
-        `Estudiantes: ${r.estudiantes ?? 0}, Matrículas: ${r.matriculas ?? 0}` +
-        (r.usuariosCreados ? `, Usuarios creados: ${r.usuariosCreados}` : "") + "."
+        (items.length ? items.join(" · ") : "sin cambios") +
+        extraUsuarios + "."
       );
       setArchivo(null);
       setPreview(null);
@@ -109,6 +143,7 @@ function ImportarContenido() {
     setEstado("idle");
     setMensaje("");
     setPreview(null);
+    setErroresAulas([]);  // NUEVO: limpiar errores
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -188,6 +223,54 @@ function ImportarContenido() {
             </div>
           )}
 
+          {/* ── NUEVO: Errores de aulas ──
+              Se muestran cuando el backend detectó aulas/edificios
+              del Excel que no existen en la DB. Bloquea el confirmar. */}
+          {erroresAulas.length > 0 && (
+            <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
+              <div className="mb-2 flex items-start gap-2">
+                <span className="text-lg" aria-hidden="true">⚠️</span>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-amber-900">
+                    No se puede importar todavía — {erroresAulas.length} problema{erroresAulas.length === 1 ? "" : "s"} de aulas/edificios
+                  </p>
+                  <p className="mt-1 text-xs text-amber-800">
+                    Cargá primero el archivo de aulas o corregí en el Excel los nombres que aparecen abajo.
+                    El nombre debe coincidir exactamente con el edificio/aula ya cargados.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 max-h-52 overflow-y-auto rounded-lg border border-amber-200 bg-white">
+                <table className="w-full text-xs">
+                  <thead className="bg-amber-100 text-amber-900">
+                    <tr>
+                      <th className="px-3 py-1.5 text-left font-semibold">Fila</th>
+                      <th className="px-3 py-1.5 text-left font-semibold">Edificio</th>
+                      <th className="px-3 py-1.5 text-left font-semibold">Aula</th>
+                      <th className="px-3 py-1.5 text-left font-semibold">Problema</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-amber-100">
+                    {erroresAulas.slice(0, 30).map((e, idx) => (
+                      <tr key={idx}>
+                        <td className="px-3 py-1.5 font-mono text-gray-700">{e.fila}</td>
+                        <td className="px-3 py-1.5 text-gray-800">{e.edificio}</td>
+                        <td className="px-3 py-1.5 text-gray-800">{e.espacio}</td>
+                        <td className="px-3 py-1.5 text-amber-800">{e.mensaje}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {erroresAulas.length > 30 && (
+                  <p className="px-3 py-2 text-xs italic text-gray-500">
+                    …y {erroresAulas.length - 30} más
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Feedback */}
           {estado === "error" && mensaje && (
             <p role="alert" className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{mensaje}</p>
@@ -210,10 +293,15 @@ function ImportarContenido() {
             {preview && (
               <button
                 onClick={handleConfirmar}
-                disabled={estado === "importing"}
+                disabled={estado === "importing" || erroresAulas.length > 0}
                 className="flex-1 rounded-xl bg-green-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
+                title={erroresAulas.length > 0 ? "Corregí primero los errores de aulas" : ""}
               >
-                {estado === "importing" ? "Importando..." : "Confirmar importación"}
+                {estado === "importing"
+                  ? "Importando..."
+                  : erroresAulas.length > 0
+                    ? "Corregí los errores primero"
+                    : "Confirmar importación"}
               </button>
             )}
             {archivo && estado !== "importing" && estado !== "previewing" && (
