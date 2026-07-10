@@ -23,6 +23,22 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { BACK_URL } from "@/config/api";
+import {
+  Landmark,
+  MapPin,
+  Users,
+  Tag,
+  Monitor,
+  FileText,
+  Wrench,
+  Clock,
+  BookOpen,
+  Calendar,
+  Info,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+} from "lucide-react";
 
 export default function EspacioPublicoPage() {
   const params = useParams();
@@ -62,13 +78,22 @@ export default function EspacioPublicoPage() {
   // ── Loading ──────────────────────────────────────────────────
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
+      <main
+        className="flex min-h-screen items-center justify-center"
+        style={{ background: "var(--color-page-bg)" }}
+      >
         <div className="text-center">
-          <svg className="mx-auto h-10 w-10 animate-spin text-green-700" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-          </svg>
-          <p className="mt-3 text-sm text-gray-600">Cargando información...</p>
+          <Loader2
+            className="mx-auto h-10 w-10 animate-spin"
+            style={{ color: "var(--color-primary)" }}
+            strokeWidth={1.75}
+          />
+          <p
+            className="mt-3 text-sm"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
+            Cargando información…
+          </p>
         </div>
       </main>
     );
@@ -77,12 +102,38 @@ export default function EspacioPublicoPage() {
   // ── Error ────────────────────────────────────────────────────
   if (error) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-red-50 to-orange-100 p-4">
-        <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-6 text-center shadow-lg">
-          <div className="mb-3 text-4xl">❌</div>
-          <h1 className="mb-2 text-xl font-bold text-red-700">QR inválido</h1>
-          <p className="text-sm text-gray-600">{error}</p>
-          <p className="mt-3 text-xs text-gray-500">
+      <main
+        className="flex min-h-screen items-center justify-center p-4"
+        style={{ background: "var(--color-page-bg)" }}
+      >
+        <div
+          className="w-full max-w-md rounded-2xl border p-6 text-center shadow-lg"
+          style={{
+            background: "var(--color-surface)",
+            borderColor: "var(--color-error-bg)",
+          }}
+        >
+          <XCircle
+            className="mx-auto mb-3 h-12 w-12"
+            style={{ color: "var(--color-error)" }}
+            strokeWidth={1.5}
+          />
+          <h1
+            className="mb-2 text-xl font-bold"
+            style={{ color: "var(--color-error)" }}
+          >
+            QR inválido
+          </h1>
+          <p
+            className="text-sm"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
+            {error}
+          </p>
+          <p
+            className="mt-3 text-xs"
+            style={{ color: "var(--color-text-muted)" }}
+          >
             Este QR puede estar desactivado o no existir.
           </p>
         </div>
@@ -95,24 +146,42 @@ export default function EspacioPublicoPage() {
   const { evento: eventoAhora, proximos } = separarEventos(eventos, horaEscaneo);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-4 pb-12">
+    <main
+      className="min-h-screen p-4 pb-12"
+      style={{ background: "var(--color-page-bg)" }}
+    >
       <div className="mx-auto w-full max-w-lg pt-6">
         {/* ═══════════════════════════════════════════════════════
             Header con info del aula
             ═══════════════════════════════════════════════════════ */}
-        <div className="mb-4 rounded-2xl bg-green-800 p-6 text-white shadow-lg">
-          <p className="text-xs uppercase tracking-wide text-green-200">
-            🏛️ Aula
-          </p>
+        <div
+          className="mb-4 rounded-2xl p-6 text-white shadow-lg"
+          style={{ background: "var(--color-primary)" }}
+        >
+          <div
+            className="flex items-center gap-1.5 text-xs uppercase tracking-wide"
+            style={{ color: "var(--color-primary-light)" }}
+          >
+            <Landmark className="h-3.5 w-3.5" strokeWidth={1.75} />
+            Aula
+          </div>
           <h1 className="mt-1 text-3xl font-bold">
             {aula.nombreCompleto}
           </h1>
           {aula.edificio && (
-            <p className="mt-2 text-sm text-green-100">
-              📍 {aula.edificio.nombre}
+            <p
+              className="mt-2 flex items-center gap-1.5 text-sm"
+              style={{ color: "var(--color-primary-subtle)" }}
+            >
+              <MapPin className="h-4 w-4" strokeWidth={1.75} />
+              {aula.edificio.nombre}
             </p>
           )}
-          <p className="mt-3 text-xs text-green-100">
+          <p
+            className="mt-3 flex items-center gap-1.5 text-xs"
+            style={{ color: "var(--color-primary-subtle)" }}
+          >
+            <Clock className="h-3.5 w-3.5" strokeWidth={1.75} />
             Consultado: {formatearFechaHora(horaEscaneo)}
           </p>
         </div>
@@ -137,11 +206,11 @@ export default function EspacioPublicoPage() {
             </h2>
             <div className="space-y-3">
               {atributos.capacidad != null && (
-                <Card label="Capacidad" value={`${atributos.capacidad} personas`} icon="👥" />
+                <Card label="Capacidad" value={`${atributos.capacidad} personas`} Icon={Users} />
               )}
 
               {atributos.tipoAula && (
-                <Card label="Tipo" value={atributos.tipoAula} icon="🏷️" />
+                <Card label="Tipo" value={atributos.tipoAula} Icon={Tag} />
               )}
 
               {atributos.esLaboratorioInformatico && (
@@ -152,25 +221,36 @@ export default function EspacioPublicoPage() {
                       ? `Sí (${atributos.cantidadPC} PCs)`
                       : "Sí"
                   }
-                  icon="🖥️"
+                  Icon={Monitor}
                   highlight
                 />
               )}
 
               {atributos.descripcion && (
-                <Card label="Descripción" value={atributos.descripcion} icon="📝" />
+                <Card label="Descripción" value={atributos.descripcion} Icon={FileText} />
               )}
 
               {Array.isArray(atributos.equipamiento) && atributos.equipamiento.length > 0 && (
-                <div className="rounded-xl bg-white p-4 shadow-sm">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    🛠️ Equipamiento
+                <div
+                  className="rounded-xl p-4 shadow-sm"
+                  style={{ background: "var(--color-surface)" }}
+                >
+                  <p
+                    className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide"
+                    style={{ color: "var(--color-text-muted)" }}
+                  >
+                    <Wrench className="h-3.5 w-3.5" strokeWidth={1.75} />
+                    Equipamiento
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {atributos.equipamiento.map((eq, idx) => (
                       <span
                         key={idx}
-                        className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-700"
+                        className="rounded-full px-3 py-1 text-sm font-medium"
+                        style={{
+                          background: "var(--color-primary-light)",
+                          color: "var(--color-primary-active)",
+                        }}
                       >
                         {eq}
                       </span>
@@ -200,10 +280,28 @@ export default function EspacioPublicoPage() {
 function SeccionEstadoActual({ evento }) {
   if (!evento) {
     return (
-      <div className="mb-4 rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-5 text-center shadow-sm">
-        <div className="mb-2 text-3xl">🟢</div>
-        <p className="text-lg font-bold text-emerald-700">Aula libre ahora</p>
-        <p className="mt-1 text-xs text-emerald-600">
+      <div
+        className="mb-4 rounded-2xl border-2 p-5 text-center shadow-sm"
+        style={{
+          borderColor: "var(--color-primary-ring)",
+          background: "var(--color-primary-subtle)",
+        }}
+      >
+        <CheckCircle2
+          className="mx-auto mb-2 h-10 w-10"
+          style={{ color: "var(--color-primary)" }}
+          strokeWidth={1.5}
+        />
+        <p
+          className="text-lg font-bold"
+          style={{ color: "var(--color-primary-active)" }}
+        >
+          Aula libre ahora
+        </p>
+        <p
+          className="mt-1 text-xs"
+          style={{ color: "var(--color-primary)" }}
+        >
           No hay ninguna ocupación en este momento
         </p>
       </div>
@@ -215,13 +313,13 @@ function SeccionEstadoActual({ evento }) {
   const bgColor = esCursada ? "bg-orange-50 border-orange-300" : "bg-blue-50 border-blue-300";
   const textColor = esCursada ? "text-orange-700" : "text-blue-700";
   const labelColor = esCursada ? "text-orange-600" : "text-blue-600";
-  const icono = esCursada ? "📚" : "📅";
+  const IconoEvento = esCursada ? BookOpen : Calendar;
   const label = esCursada ? "En cursada ahora" : "Reservado ahora";
 
   return (
     <div className={`mb-4 rounded-2xl border-2 ${bgColor} p-5 shadow-sm`}>
       <div className="mb-2 flex items-center gap-2">
-        <span className="text-2xl">{icono}</span>
+        <IconoEvento className={`h-5 w-5 ${labelColor}`} strokeWidth={1.75} />
         <span className={`text-sm font-semibold uppercase ${labelColor}`}>
           {label}
         </span>
@@ -230,8 +328,9 @@ function SeccionEstadoActual({ evento }) {
       {evento.subtitulo && (
         <p className={`mt-1 text-sm ${textColor}`}>{evento.subtitulo}</p>
       )}
-      <p className={`mt-3 text-xs ${labelColor}`}>
-        🕒 {formatearHora(evento.start)} — {formatearHora(evento.end)}
+      <p className={`mt-3 flex items-center gap-1.5 text-xs ${labelColor}`}>
+        <Clock className="h-3.5 w-3.5" strokeWidth={1.75} />
+        {formatearHora(evento.start)} — {formatearHora(evento.end)}
       </p>
     </div>
   );
@@ -243,9 +342,23 @@ function SeccionEstadoActual({ evento }) {
 function SeccionProximos({ proximos }) {
   if (!proximos || proximos.length === 0) {
     return (
-      <div className="mb-4 rounded-xl border border-gray-200 bg-white p-5 text-center">
-        <p className="text-sm text-gray-500">
-          ℹ️ No hay más ocupaciones programadas para hoy.
+      <div
+        className="mb-4 flex items-center justify-center gap-2 rounded-xl border p-5 text-center"
+        style={{
+          background: "var(--color-surface)",
+          borderColor: "var(--color-border)",
+        }}
+      >
+        <Info
+          className="h-4 w-4 shrink-0"
+          style={{ color: "var(--color-text-muted)" }}
+          strokeWidth={1.75}
+        />
+        <p
+          className="text-sm"
+          style={{ color: "var(--color-text-muted)" }}
+        >
+          No hay más ocupaciones programadas para hoy.
         </p>
       </div>
     );
@@ -289,8 +402,12 @@ function EventoCard({ evento }) {
           {badgeText}
         </span>
       </div>
-      <p className="mt-2 text-xs text-gray-600">
-        🕒 {formatearHora(evento.start)} — {formatearHora(evento.end)}
+      <p
+        className="mt-2 flex items-center gap-1.5 text-xs"
+        style={{ color: "var(--color-text-secondary)" }}
+      >
+        <Clock className="h-3 w-3" strokeWidth={1.75} />
+        {formatearHora(evento.start)} — {formatearHora(evento.end)}
       </p>
     </div>
   );

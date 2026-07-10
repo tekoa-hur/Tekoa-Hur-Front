@@ -123,7 +123,7 @@ export default function AsistenciaGrid({
                   // Presente
                   if (estado === "PRESENTE") {
                     texto = "P";
-                    stilos = "bg-green-100 text-green-700";
+                    estilos = "bg-green-100 text-green-700";
                   }
 
                   // Ausente

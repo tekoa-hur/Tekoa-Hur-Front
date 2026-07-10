@@ -2,6 +2,11 @@
 
 /* ═══════════════════════════════════════════════════════════════
    TEKOÁ-HUR — Design Tokens
+   Sistema de gestión académica de UNAHUR
+
+   Paleta institucional basada en la identidad de la
+   Universidad Nacional de Hurlingham.
+
    Regla: un solo lugar para cambiar colores en toda la app.
    Referencia: buenas prácticas 2.b Design System (Dodino)
    ═══════════════════════════════════════════════════════════════ */
@@ -11,13 +16,15 @@
   --background: #ffffff;
   --foreground: #171717;
 
-  /* ── Paleta institucional (verde Tekoá-Hur) ── */
-  --color-primary:          #1B5E20;   /* verde oscuro — header, botones primarios */
-  --color-primary-hover:    #2E7D32;   /* hover de botones primarios */
-  --color-primary-light:    #E8F5E9;   /* fondos sutiles, íconos de cards */
-  --color-primary-ring:     #A5D6A7;   /* focus ring en inputs */
+  /* ── Paleta institucional UNAHUR (verde oliva vibrante) ── */
+  --color-primary:          #558B2F;   /* verde UNAHUR — header, botones primarios */
+  --color-primary-hover:    #689F38;   /* hover — verde un tono más brillante */
+  --color-primary-active:   #33691E;   /* estados active/pressed */
+  --color-primary-light:    #DCEDC8;   /* fondos de íconos, badges, ring */
+  --color-primary-subtle:   #F1F8E9;   /* fondos de sección muy sutiles */
+  --color-primary-ring:     #AED581;   /* focus ring en inputs */
 
-  /* ── Semánticos (rojo=error, verde=éxito, amarillo=alerta) ── */
+  /* ── Semánticos ── */
   --color-success:          #16A34A;
   --color-success-bg:       #DCFCE7;
   --color-error:            #DC2626;
@@ -31,18 +38,19 @@
   --color-text-primary:     #111827;
   --color-text-secondary:   #4B5563;
   --color-text-muted:       #9CA3AF;
-  --color-border:           #D1D5DB;
-  --color-border-focus:     #1B5E20;   
+  --color-border:           #E5E7EB;
+  --color-border-strong:    #D1D5DB;
+  --color-border-focus:     #558B2F;
   --color-surface:          #FFFFFF;
   --color-surface-alt:      #F9FAFB;
-  --color-page-bg:          #F3F4F6;
+  --color-page-bg:          #F8FAF6;   /* fondo con leve tinte verde */
 
-  /* ── Colores Estables Absolutos (Inmunes al Modo Oscuro) ── */
+  /* ── Colores estables absolutos (inmunes al modo oscuro) ── */
   --color-fixed-white:      #ffffff;
   --color-fixed-dark:       #111827;
   --color-fixed-muted:      #4B5563;
 
-  /* ── Espaciado base (múltiplos de 8px — regla 2.a) ── */
+  /* ── Espaciado base (múltiplos de 8px) ── */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -58,24 +66,26 @@
   --radius-xl:  20px;
   --radius-full: 9999px;
 
-  /* ── Sombras ── */
-  --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-md:  0 2px 10px rgba(0, 0, 0, 0.08);
-  --shadow-lg:  0 4px 20px rgba(0, 0, 0, 0.10);
+  /* ── Sombras suaves (buenas prácticas 2026) ── */
+  --shadow-sm:  0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md:  0 4px 10px rgba(15, 23, 42, 0.06);
+  --shadow-lg:  0 10px 30px rgba(15, 23, 42, 0.08);
 }
 
 /* ═══════════════════════════════════════════════════════════════
    MODO OSCURO (Dark Mode Override)
    ═══════════════════════════════════════════════════════════════ */
 :root.dark {
-  --background: #121212;
+  --background: #0F1712;
   --foreground: #F3F4F6;
 
   /* Verde institucional adaptado para modo oscuro (más brillante para accesibilidad) */
-  --color-primary:          #4CAF50;   
-  --color-primary-hover:    #81C784;   
-  --color-primary-light:    #1B3820;   /* Fondo verde muy oscuro */
-  --color-primary-ring:     #2E7D32;   
+  --color-primary:          #9CCC65;
+  --color-primary-hover:    #AED581;
+  --color-primary-active:   #7CB342;
+  --color-primary-light:    #33691E;   /* Fondo verde oscuro */
+  --color-primary-subtle:   #1B3820;
+  --color-primary-ring:     #558B2F;
 
   /* Semánticos en modo oscuro */
   --color-success:          #4ADE80;
@@ -88,11 +98,12 @@
   --color-info-bg:          #1E3A8A;
 
   /* Grises neutros adaptados a fondo oscuro */
-  --color-text-primary:     #F9FAFB;   
+  --color-text-primary:     #F9FAFB;
   --color-text-secondary:   #E5E7EB;
   --color-text-muted:       #9CA3AF;
-  --color-border:           #374151;   
-  --color-border-focus:     #4CAF50;   
+  --color-border:           #374151;
+  --color-border-strong:    #4B5563;
+  --color-border-focus:     #9CCC65;
   --color-surface:          #1E1E1E;   /* Tarjetas, contenedores y dropdowns */
   --color-surface-alt:      #262626;
   --color-page-bg:          #121212;   /* Fondo general de la aplicación */
@@ -103,14 +114,18 @@
   --shadow-lg:  0 8px 28px rgba(0, 0, 0, 0.5);
 }
 
-/* ── Next.js / Tailwind theme bridge ── */
+/* ═══════════════════════════════════════════════════════════════
+   NEXT.JS / TAILWIND THEME BRIDGE
+   Vincula las clases nativas de Tailwind a las variables dinámicas
+   para que respondan al modo oscuro sin duplicar código.
+   ═══════════════════════════════════════════════════════════════ */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* ⚡ Mapeo global: Vincula las clases nativas de Tailwind a tus variables dinámicas */
+  /* ⚡ Mapeo global: clases nativas de Tailwind → variables dinámicas */
   --color-white: var(--color-surface);
   --color-gray-50: var(--color-surface-alt);
   --color-gray-100: var(--color-page-bg);
@@ -120,19 +135,49 @@
   --color-gray-700: var(--color-text-secondary);
   --color-gray-800: var(--color-text-primary);
   --color-gray-900: var(--color-text-primary);
-  
+
   /* Clases estables para el lector QR y componentes fijos claro */
   --color-fixed-white: var(--color-fixed-white);
   --color-fixed-dark: var(--color-fixed-dark);
   --color-fixed-muted: var(--color-fixed-muted);
 
+  /* ═══════════════════════════════════════════════════════════════
+     🌱 Mapeo de VERDES de Tailwind → paleta UNAHUR
+     Con esto, cualquier clase text-green-700, bg-green-50, etc.
+     usada en las pantallas internas se transforma automáticamente
+     al verde institucional UNAHUR sin tocar ese código.
+     ═══════════════════════════════════════════════════════════════ */
+  --color-green-50:   #F1F8E9;   /* fondos muy sutiles */
+  --color-green-100:  #DCEDC8;   /* fondos de iconos, badges */
+  --color-green-200:  #C5E1A5;   /* bordes suaves, chips */
+  --color-green-300:  #AED581;   /* focus rings */
+  --color-green-400:  #9CCC65;   /* dark mode primary */
+  --color-green-500:  #8BC34A;   /* tono medio de identidad */
+  --color-green-600:  #7CB342;   /* tono hover fuerte */
+  --color-green-700:  #689F38;   /* verde institucional hover */
+  --color-green-800:  #558B2F;   /* verde UNAHUR principal */
+  --color-green-900:  #33691E;   /* verde oscuro / textos */
+  --color-green-950:  #1B3820;   /* verde muy oscuro */
+
+  /* También el emerald por si algún componente lo usa */
+  --color-emerald-50:   #F1F8E9;
+  --color-emerald-100:  #DCEDC8;
+  --color-emerald-200:  #C5E1A5;
+  --color-emerald-300:  #AED581;
+  --color-emerald-400:  #9CCC65;
+  --color-emerald-500:  #8BC34A;
+  --color-emerald-600:  #7CB342;
+  --color-emerald-700:  #689F38;
+  --color-emerald-800:  #558B2F;
+  --color-emerald-900:  #33691E;
+
   /* Fuerza a Tailwind v4 a usar la clase .dark manual */
   --variant-dark: (.dark &);
 }
 
-/* ══════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    BASE
-   ══════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════ */
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -144,12 +189,13 @@ body {
   font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* ══════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    LAYOUT HELPERS
-   ══════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════ */
 .page-container {
   max-width: 1200px;
   margin: 0 auto;
@@ -163,9 +209,9 @@ body {
   color: var(--color-text-primary);
 }
 
-/* ══════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    FILTROS DE ASISTENCIA
-   ══════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════ */
 .asistencia-filtros {
   display: flex;
   gap: var(--space-4);
@@ -218,9 +264,9 @@ body {
   opacity: 0.6;
 }
 
-/* ══════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    PLACEHOLDERS DE ASISTENCIA
-   ══════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════ */
 .asistencia-placeholder {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -232,9 +278,9 @@ body {
   font-size: 14px;
 }
 
-/* ══════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    PÁGINA CENTRADA (login y registrar-asistencia)
-   ══════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════ */
 .main-centered-page {
   display: flex;
   min-height: 100vh;
@@ -244,9 +290,10 @@ body {
   padding: var(--space-4);
 }
 
-/* ══════════════════════════════════════════════════
-   INPUTS GLOBALES ── Fuera de Tailwind
-   ══════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   INPUTS GLOBALES — Fuera de Tailwind
+   Focus visible accesible para todos los controles.
+   ═══════════════════════════════════════════════════════════════ */
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
@@ -254,9 +301,9 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
-/* ══════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    SCROLLBAR SUTIL (webkit)
-   ══════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════ */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -271,14 +318,190 @@ textarea:focus-visible {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   LECTOR QR — En dark mode NO forzar fondo blanco
+   El texto ("Cámara disponible", labels) y los títulos deben
+   adaptarse al dark mode como el resto de la app.
+   ═══════════════════════════════════════════════════════════════ */
+/* (Los estilos legacy de .lector-qr-page se dejaron
+    por retrocompatibilidad — nunca se aplican porque la clase
+    no está referenciada en ningún componente.) */
 .lector-qr-page h1 {
-  color: #111827 !important; /* Fuerza el color oscuro del modo claro */
+  color: #111827 !important;
 }
 
 .lector-qr-page p {
-  color: #4B5563 !important; /* Fuerza el color secundario del modo claro */
+  color: #4B5563 !important;
 }
 
 .lector-qr-page .bg-white {
-  background-color: #ffffff !important; /* Fuerza el fondo blanco puro */
+  background-color: #ffffff !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   🌙 CORRECCIONES DE MODO OSCURO
+   Fix para clases hardcoded (bg-white, text-gray-XXX, etc.)
+   que en algunas pantallas no toman el mapeo automático.
+   Aplicamos solo en dark mode para no romper el modo claro.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Fondos blancos hardcoded → superficie oscura ── */
+:root.dark .bg-white {
+  background-color: var(--color-surface) !important;
+}
+
+/* ── Texto oscuro hardcoded → texto claro ── */
+:root.dark .text-gray-900,
+:root.dark .text-gray-800,
+:root.dark .text-black {
+  color: var(--color-text-primary) !important;
+}
+
+:root.dark .text-gray-700,
+:root.dark .text-gray-600 {
+  color: var(--color-text-secondary) !important;
+}
+
+:root.dark .text-gray-500,
+:root.dark .text-gray-400 {
+  color: var(--color-text-muted) !important;
+}
+
+/* ── Bordes grises hardcoded → bordes oscuros ── */
+:root.dark .border-gray-200,
+:root.dark .border-gray-300 {
+  border-color: var(--color-border) !important;
+}
+
+/* ── Fondos gris claro hardcoded → fondos oscuros ── */
+:root.dark .bg-gray-50,
+:root.dark .bg-gray-100 {
+  background-color: var(--color-surface-alt) !important;
+}
+
+/* ── Verdes oscuros hardcoded en dark mode ── */
+/* Los verdes de "títulos" (text-green-900) tienen que ser más brillantes en dark */
+:root.dark .text-green-900,
+:root.dark .text-green-800 {
+  color: #AED581 !important;   /* verde brillante para títulos en dark */
+}
+
+:root.dark .text-green-700 {
+  color: #9CCC65 !important;   /* verde brillante para links en dark */
+}
+
+/* ── Fondos verdes muy claros en dark mode ── */
+:root.dark .bg-green-50 {
+  background-color: #1B3820 !important;   /* verde muy oscuro */
+}
+
+:root.dark .bg-green-100 {
+  background-color: #33691E !important;   /* verde oscuro */
+}
+
+/* ── Fondos ámbar (avisos) en dark mode ── */
+:root.dark .bg-amber-50 {
+  background-color: #78350F !important;   /* ámbar oscuro */
+}
+
+:root.dark .text-amber-800 {
+  color: #FBBF24 !important;              /* ámbar brillante */
+}
+
+:root.dark .border-amber-200 {
+  border-color: #B45309 !important;
+}
+
+/* ── Fondos rojos (errores) en dark mode ── */
+:root.dark .bg-red-50 {
+  background-color: #7F1D1D !important;
+}
+
+:root.dark .text-red-700,
+:root.dark .text-red-600 {
+  color: #FCA5A5 !important;
+}
+
+:root.dark .border-red-200 {
+  border-color: #991B1B !important;
+}
+
+/* ── Fondos azules (info) en dark mode ── */
+:root.dark .bg-blue-50 {
+  background-color: #1E3A8A !important;
+}
+
+:root.dark .text-blue-700,
+:root.dark .text-blue-800 {
+  color: #93C5FD !important;
+}
+
+:root.dark .border-blue-200 {
+  border-color: #1E40AF !important;
+}
+
+/* ── Hover states más sutiles en dark mode ── */
+:root.dark .hover\:bg-gray-50:hover,
+:root.dark .hover\:bg-gray-100:hover {
+  background-color: var(--color-surface-alt) !important;
+}
+
+:root.dark .hover\:bg-green-50:hover,
+:root.dark .hover\:bg-green-100:hover {
+  background-color: #33691E !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   🎯 FIX GLOBAL PARA SELECTS Y OPTIONS EN MODO OSCURO
+   Los <select> y <option> nativos del navegador tienen fondo
+   blanco por defecto y no heredan estilos del padre.
+   Este fix asegura que en dark mode se vean correctamente.
+   ═══════════════════════════════════════════════════════════════ */
+:root.dark select {
+  background-color: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border) !important;
+}
+
+:root.dark select option {
+  background-color: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+}
+
+:root.dark select option:hover,
+:root.dark select option:focus,
+:root.dark select option:checked {
+  background-color: var(--color-primary-light) !important;
+  color: var(--color-text-primary) !important;
+}
+
+/* Selects deshabilitados */
+:root.dark select:disabled {
+  background-color: var(--color-surface-alt) !important;
+  color: var(--color-text-muted) !important;
+  opacity: 0.6;
+}
+
+/* Inputs y textarea en dark mode */
+:root.dark input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+:root.dark textarea {
+  background-color: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border) !important;
+}
+
+:root.dark input::placeholder,
+:root.dark textarea::placeholder {
+  color: var(--color-text-muted) !important;
+}
+
+/* Autofill en dark mode (Chrome / WebKit) */
+:root.dark input:-webkit-autofill,
+:root.dark input:-webkit-autofill:hover,
+:root.dark input:-webkit-autofill:focus,
+:root.dark input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--color-text-primary) !important;
+  -webkit-box-shadow: 0 0 0 30px var(--color-surface) inset !important;
+  transition: background-color 5000s ease-in-out 0s;
 }

@@ -5,18 +5,19 @@ import Breadcrumb from "@/components/layout/Breadcrumb";
  * AppShell — Estructura base de toda la aplicación.
  *
  * Incluye:
- *  - Header fijo con logo, rol y logout
+ *  - Header institucional (verde UNAHUR, sticky)
  *  - Breadcrumb automático (invisible en "/")
  *  - Área de contenido principal
  *  - Footer institucional
  *
  * Uso: se aplica en layout.js, no hace falta importarlo en cada página.
- *
- * @param {React.ReactNode} children - Contenido de la página actual
  */
 export default function AppShell({ children }) {
   return (
-    <div className="flex min-h-screen flex-col bg-gray-100">
+    <div
+      className="flex min-h-screen flex-col"
+      style={{ background: "var(--color-page-bg)" }}
+    >
 
       {/* ── Header global (sticky) ── */}
       <Header />
@@ -33,11 +34,26 @@ export default function AppShell({ children }) {
         {children}
       </main>
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-gray-200 bg-white py-3">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <p className="text-center text-xs text-gray-400">
-            Tekoá-Hur — Sistema de Control de Asistencias Académicas
+      {/* ── Footer institucional ── */}
+      <footer
+        className="border-t"
+        style={{
+          borderColor: "var(--color-border)",
+          background: "var(--color-surface)",
+        }}
+      >
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-1 px-4 py-4 sm:flex-row sm:justify-between sm:px-6">
+          <p
+            className="text-xs"
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            Tekoá-Hur — Sistema de gestión académica
+          </p>
+          <p
+            className="text-xs"
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            Universidad Nacional de Hurlingham · 2026
           </p>
         </div>
       </footer>

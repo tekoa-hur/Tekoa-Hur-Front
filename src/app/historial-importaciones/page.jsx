@@ -5,6 +5,39 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { listarHistorialImportaciones, descargarArchivoImportacion } from "@/utils/historialImportacionApi";
 
 /**
+ * Formatea un contador del historial de importaciones.
+ *
+ * Soporta 2 formatos por retrocompatibilidad:
+ *
+ * 1) Formato clásico (número directo):
+ *      profesores: 5   →   "5"
+ *
+ * 2) Formato nuevo (objeto con nuevos/actualizados/sinCambios):
+ *      profesores: { nuevos: 2, actualizados: 1, sinCambios: 5 }
+ *      →   "+2 nuevos / ~1 actualizados / 5 sin cambios"
+ *
+ * Esto evita el error "Objects are not valid as a React child" cuando
+ * el detalle guardado en el historial es del formato nuevo.
+ */
+function formatearContador(valor) {
+  if (valor == null) return "0";
+  // Formato clásico: número o string
+  if (typeof valor === "number" || typeof valor === "string") {
+    return String(valor);
+  }
+  // Formato nuevo: objeto con contadores
+  if (typeof valor === "object") {
+    const partes = [];
+    if (valor.nuevos) partes.push(`+${valor.nuevos} nuevos`);
+    if (valor.actualizados) partes.push(`~${valor.actualizados} actualizados`);
+    if (valor.sinCambios) partes.push(`${valor.sinCambios} sin cambios`);
+    if (partes.length === 0) return "0";
+    return partes.join(" / ");
+  }
+  return String(valor);
+}
+
+/**
  * Permite consultar todas las importaciones realizadas desde el sistema.
  */
 export default function HistorialImportacionesPage() {
@@ -354,23 +387,23 @@ function HistorialImportacionesContenido() {
                                 // ─── Detalle clásico (comisiones / alumnos) ───
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                     <p>Edificios:</p>
-                                    <p>{importacionSeleccionada.detalle.edificios}</p>
+                                    <p>{formatearContador(importacionSeleccionada.detalle.edificios)}</p>
                                     <p>Aulas:</p>
-                                    <p>{importacionSeleccionada.detalle.aulas}</p>
+                                    <p>{formatearContador(importacionSeleccionada.detalle.aulas)}</p>
                                     <p>Profesores:</p>
-                                    <p>{importacionSeleccionada.detalle.profesores}</p>
+                                    <p>{formatearContador(importacionSeleccionada.detalle.profesores)}</p>
                                     <p>Materias:</p>
-                                    <p>{importacionSeleccionada.detalle.materias}</p>
+                                    <p>{formatearContador(importacionSeleccionada.detalle.materias)}</p>
                                     <p>Comisiones:</p>
-                                    <p>{importacionSeleccionada.detalle.comisiones}</p>
+                                    <p>{formatearContador(importacionSeleccionada.detalle.comisiones)}</p>
                                     <p>Horarios:</p>
-                                    <p>{importacionSeleccionada.detalle.horarios}</p>
+                                    <p>{formatearContador(importacionSeleccionada.detalle.horarios)}</p>
                                     <p>Estudiantes:</p>
-                                    <p>{importacionSeleccionada.detalle.estudiantes}</p>
+                                    <p>{formatearContador(importacionSeleccionada.detalle.estudiantes)}</p>
                                     <p>Matrículas:</p>
-                                    <p>{importacionSeleccionada.detalle.matriculas}</p>
+                                    <p>{formatearContador(importacionSeleccionada.detalle.matriculas)}</p>
                                     <p>Usuarios creados:</p>
-                                    <p>{importacionSeleccionada.detalle.usuariosCreados}</p>
+                                    <p>{formatearContador(importacionSeleccionada.detalle.usuariosCreados)}</p>
                                 </div>
                             )}
 
