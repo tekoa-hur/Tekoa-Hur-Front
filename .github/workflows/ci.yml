@@ -7,7 +7,7 @@ on:
     branches: [develop]
 
 jobs:
-  test:
+  ci-process:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,29 +20,17 @@ jobs:
       - name: Instalar dependencias
         run: npm install
 
-      # Añadimos el flag --coverage para que Vitest genere el reporte
+      # Ejecuta los tests y genera la cobertura
       - name: Ejecutar tests con cobertura
         run: npm run test -- --run --coverage
 
-      # El reporte se sube inmediatamente después de correr los tests en este mismo entorno
+      # Al estar dentro del flujo lineal sin dependencias de jobs, el parser no se bloquea
       - name: Subir reporte a Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          slug: tekoa-hur/Tekoa-Hur-Front
 
-  build:
-    needs: test
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Instalar dependencias
-        run: npm install
-
+      # El build se hace justo después en el mismo entorno limpio
       - name: Build
         run: npm run build
