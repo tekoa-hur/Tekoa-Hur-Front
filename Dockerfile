@@ -50,4 +50,9 @@ COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000
 
+ENV TZ=America/Argentina/Buenos_Aires
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone
+    
+
 CMD ["npm", "start"]
